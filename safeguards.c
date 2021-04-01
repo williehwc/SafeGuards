@@ -29,7 +29,8 @@ int main() {
     }
 
     // Listen for messages
-    int msg_type = 0;
+    int msg_count = 0;
+    int msg_type = 1;
     struct msg_buf buffer;
     while (1) {
         // The following line will wait for a message
@@ -37,12 +38,18 @@ int main() {
             perror("Cannot read queue");
             exit(1);
         }
-        printf("Received: \"%s\"\n", buffer.msg_text);
+        printf("Received: %ld \"%s\"\n", buffer.msg_type, buffer.msg_text);
         // If the message is "end", break out of the loop
         int to_end = strcmp(buffer.msg_text, "end");
         if (to_end == 0)
             break;
-        sleep(1);
+        if (msg_count % 2 == 0) {
+            buffer.msg_type = 3;
+            strcpy(buffer.msg_text, "Got it");
+            if (msgsnd(queue_id, &buffer, strlen(buffer.msg_text) + 1, 0) == -1)
+                perror("Cannot send response");
+        }
+        msg_count++;
     }
 
 }
