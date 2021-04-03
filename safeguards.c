@@ -7,20 +7,12 @@
 #include <string.h>
 #include <unistd.h>
 
-#define QUEUE_KEY 123
-#define MSG_TEXT_LEN 500
-#define PERMISSIONS 0600
-
-// Message format
-struct msg_buf {
-   long msg_type;
-   char msg_text[MSG_TEXT_LEN];
-};
+#include "safeguards.h"
 
 int main() {
 
     // Create message queue
-    int queue_id = msgget(QUEUE_KEY, PERMISSIONS | IPC_CREAT);
+    int queue_id = msgget(QUEUE_KEY, QUEUE_PERM | IPC_CREAT);
     if (queue_id == -1) {
         perror("Cannot initialize queue");
         exit(1);
@@ -30,7 +22,7 @@ int main() {
 
     // Listen for messages
     int msg_type = 0;
-    struct msg_buf buffer;
+    MsgBufferDebug buffer;
     while (1) {
         // The following line will wait for a message
         if (msgrcv(queue_id, &buffer, sizeof(buffer.msg_text), msg_type, 0) == -1) {

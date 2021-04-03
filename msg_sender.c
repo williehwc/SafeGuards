@@ -6,20 +6,18 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define QUEUE_KEY 123
-#define MSG_TEXT_LEN 500
-#define PERMISSIONS 0600
+#include "safeguards.h"
 
 // Message format
 struct msg_buf {
    long msg_type;
-   char msg_text[MSG_TEXT_LEN];
+   char msg_text[CONTENT_LEN];
 };
 
 int main() {
 
     // Access message queue
-    int queue_id = msgget(QUEUE_KEY, PERMISSIONS);
+    int queue_id = msgget(QUEUE_KEY, QUEUE_PERM);
     if (queue_id == -1) {
         perror("Cannot access queue");
         exit(1);
@@ -29,7 +27,7 @@ int main() {
 
     // Send messages
     int msg_type = 0;
-    struct msg_buf buffer;
+    MsgBufferDebug buffer;
     while(fgets(buffer.msg_text, sizeof buffer.msg_text, stdin) != NULL) {
         int len = strlen(buffer.msg_text);
         // Remove newline at end, if it exists
