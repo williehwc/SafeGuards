@@ -7,9 +7,31 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <openssl/rsa.h>
+#include <openssl/pem.h>
+
 #include "safeguards.h"
 
 int main() {
+
+    // Create private/public key pair
+    RSA *rsa_key = RSA_new();
+    BIGNUM *rsa_exponent = BN_new();
+	BN_set_word(rsa_exponent, RSA_F4); // RSA_F4 = 65537
+    int rsa_return = RSA_generate_key_ex(rsa_key, RSA_BITS, rsa_exponent, NULL);
+    if (!rsa_return) {
+        perror("Cannot generate RSA key pair");
+        exit(1);
+    }
+
+    // Convert public key to PEM format so it can be passed as a string
+    BIO *key_bio = BIO_new(BIO_s_mem());
+    PEM_write_bio_RSAPublicKey(key_bio, rsa_key);
+    int key_len = BIO_pending(key_bio);
+    char *pem_public_key = calloc(key_len + 1, 1); // null-terminate
+    BIO_read(key_bio, pem_public_key, key_len);
+    BIO_free_all(key_bio);
+    // printf("%s", pem_public_key);
 
     // Create message queue
     int queue_id = msgget(QUEUE_KEY, QUEUE_PERM | IPC_CREAT);

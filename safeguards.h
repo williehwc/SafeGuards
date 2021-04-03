@@ -3,6 +3,8 @@
 #define QUEUE_KEY 108
 #define QUEUE_PERM 0600
 
+#define RSA_BITS 2048
+
 // Inbound messages to SafeGuards
 typedef struct MsgBufferIn {
    long recipient;
