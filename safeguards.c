@@ -6,11 +6,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 
 #include "safeguards.h"
+
+void *handle_msg(void *buf) {
+    MsgBufferDebug *buffer = (MsgBufferDebug*)buf;
+    printf("Received: \"%s\"\n", buffer->msg_text);
+}
 
 int main() {
 
@@ -49,14 +55,14 @@ int main() {
         // The following line will wait for a message
         if (msgrcv(queue_id, &buffer, sizeof(buffer.msg_text), msg_type, 0) == -1) {
             perror("Cannot read queue");
-            exit(1);
+            sleep(5);
         }
-        printf("Received: \"%s\"\n", buffer.msg_text);
-        // If the message is "end", break out of the loop
-        int to_end = strcmp(buffer.msg_text, "end");
-        if (to_end == 0)
-            break;
-        sleep(1);
+        // Create a new thread to handle the message
+        pthread_t *thread;
+        if (pthread_create(thread, NULL, handle_msg, &buffer) != 0) {
+            perror("Cannot create thread");
+            sleep(5);
+        }
     }
 
 }

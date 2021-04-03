@@ -1,5 +1,5 @@
 safeguards:
-	gcc safeguards.c -o safeguards.out -l crypto
+	gcc safeguards.c -o safeguards.out -l crypto -l pthread
 	gcc msg_sender.c -o msg_sender.out
 
 example:
