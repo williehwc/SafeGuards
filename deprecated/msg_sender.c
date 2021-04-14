@@ -29,12 +29,14 @@ int main() {
     int msg_type = 0;
     MsgBufferDebug buffer;
     while(fgets(buffer.msg_text, sizeof buffer.msg_text, stdin) != NULL) {
-        int len = strlen(buffer.msg_text);
+        int len1 = strlen(buffer.msg_text);
+        int len2 = sizeof buffer.msg_text;
+        printf("%d %d\n", len1, len2);
         // Remove newline at end, if it exists
-        if (buffer.msg_text[len-1] == '\n')
-            buffer.msg_text[len-1] = '\0';
-        if (msgsnd(queue_id, &buffer, len + 1, 0) == -1)
-            perror("Cannot send message");
+        // if (buffer.msg_text[len-1] == '\n')
+        //     buffer.msg_text[len-1] = '\0';
+        // if (msgsnd(queue_id, &buffer, len + 1, 0) == -1)
+        //     perror("Cannot send message");
     }
 
 }

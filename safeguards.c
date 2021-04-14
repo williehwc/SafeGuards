@@ -14,8 +14,8 @@
 #include "safeguards.h"
 
 void *handle_msg(void *buf) {
-    MsgBufferDebug *buffer = (MsgBufferDebug*)buf;
-    printf("Received: \"%s\"\n", buffer->msg_text);
+    MsgBufferIn *buffer = (MsgBufferIn*)buf;
+    printf("Received: \"%s\"\n", buffer->content);
 }
 
 int main() {
@@ -50,10 +50,10 @@ int main() {
 
     // Listen for messages
     int msg_type = 0;
-    MsgBufferDebug buffer;
+    MsgBufferIn buffer;
     while (1) {
         // The following line will wait for a message
-        if (msgrcv(queue_id, &buffer, sizeof(buffer.msg_text), msg_type, 0) == -1) {
+        if (msgrcv(queue_id, &buffer, sizeof(buffer) - sizeof(long), msg_type, 0) == -1) {
             perror("Cannot read queue");
             sleep(5);
         }

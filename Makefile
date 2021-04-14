@@ -1,6 +1,5 @@
 safeguards:
 	gcc safeguards.c -o safeguards.out -l crypto -l pthread
-	gcc msg_sender.c -o msg_sender.out
 
 example:
 	gcc z3_example.c -o z3_example.obj -c -I ../z3/src/api
