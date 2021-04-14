@@ -1,4 +1,4 @@
-#define CONTENT_LEN 512
+#define CONTENT_LEN 2048
 #define MAX_GUARD_SIZE 32
 #define MAX_NUM_GUARDS 16
 
