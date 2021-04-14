@@ -10,6 +10,9 @@
 
 #define RSA_BITS 2048
 
+#define TRUE 1
+#define FALSE 0
+
 // Inbound messages to SafeGuards
 typedef struct MsgBufferIn {
    long recipient;
@@ -74,7 +77,7 @@ typedef struct GuardLine {
 
    // These keep track whether variables refer
    // to a past expression, a variable or a new value
-   Parameter_Type type[MAX_PARAMETERS];
+   enum Parameter_Type type[MAX_PARAMETERS];
    int values[MAX_PARAMETERS];
 
 } GuardLine;
@@ -85,8 +88,8 @@ typedef struct Guard {
 } Guard;
 
 const int variableCount = 35;
-const char** variables =
-   ["ip.ver", "ip.hlen", "ip.tos", "ip.tlen", "ip.identification",
+const char* variables[] =
+   {"ip.ver", "ip.hlen", "ip.tos", "ip.tlen", "ip.identification",
    "ip.ffo_unused", "ip.df", "ip.mf", "ip.foffset", "ip.ttl",
    "ip.nextp", "ip.hchecksum", "ip.src", "ip.dst",
    "udp.sport", "udp.dport", "udp.length", "udp.crc",
@@ -94,24 +97,24 @@ const char** variables =
    "tcp.ack_num", "tcp.offset", "tcp.reserved", "tcp.flag_cwr",
    "tcp.flag_ece", "tcp.flag_urg", "tcp.flag_ack", "tcp.flag_psh",
    "tcp.flag_rst", "tcp.flag_syn", "tcp.flag_fin", "tcp.rcv_wnd",
-   "tcp.flag_cksum", "tcp.urg_ptr"];
+   "tcp.flag_cksum", "tcp.urg_ptr"};
 
 
 // CHAR ARRAY HELPER FUNCTIONS
 // CAN ONLY PASS NULL, SPACE or NEWLINE
 // CONTAINING STRINGS (else buffer overrun)
-int stringEqual(char* str1, char* str2)
+int stringEqual(char* str1, const char* str2)
 {
     for (int i = 0; i < CONTENT_LEN; i++)
     {
         // Check they have the same length
-        if (str1[i] == "\0" ||
-            str1[i] == "\n" ||
-            str1[i] == " ")
+        if (str1[i] == '\0' ||
+            str1[i] == '\n' ||
+            str1[i] == ' ')
         {
-            if (str2[i] == "\0" ||
-            str2[i] == "\n" ||
-            str2[i] == " ")
+            if (str2[i] == '\0' ||
+            str2[i] == '\n' ||
+            str2[i] == ' ')
                 return 1;
             else
                 return 0;
@@ -126,19 +129,19 @@ int stringEqual(char* str1, char* str2)
 
 int parseNumber(char* str, int* num)
 {
-   bool minus = false;
-   if (str[0] == "-")
+   int minus = FALSE;
+   if (str[0] == '-')
    {
-      minus = true;
+      minus = TRUE;
       str += 1;
    }
 
    for (int i = 0; i < CONTENT_LEN; i++)
    {
       // Check they have the same length
-      if (str[i] == "\0" ||
-         str[i] == "\n" ||
-         str[i] == " ")
+      if (str[i] == '\0' ||
+         str[i] == '\n' ||
+         str[i] == ' ')
       {
          if (minus)
             (*num) = -(*num);
@@ -149,7 +152,7 @@ int parseNumber(char* str, int* num)
       if (str[i] < '0' || str[i] > '9')
          return -1;
 
-      int val = int (str[i]) - '0';
+      int val = str[i] - '0';
 
       // Return error in overflow
       if ((*num) < (*num) * 10 + val)

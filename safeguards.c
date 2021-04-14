@@ -19,7 +19,6 @@ Guard installedGuards[MAX_NUM_GUARDS];
 int parse_operation(GuardLine* line, char* message, int start)
 {
     char* opStart = message + start;
-    int opLength = end-start;
 
     enum Operators op = op_fail;
     if (stringEqual(opStart, "=")) op = equal;
@@ -50,7 +49,7 @@ int parse_value(GuardLine* line, int param_num, char* message, int start)
     int val;
 
     // Check if expression starts with ^
-    if (varStart[0] == "^")
+    if (varStart[0] == '^')
     {
         varStart += 1;
         // ERROR CONDITIONS
@@ -114,7 +113,7 @@ int parse_line(GuardLine* line, char* message, int start, int end)
 int install_guard(char* message)
 {
     int lineStart = 0;
-    int validEnd = false;
+    int validEnd = FALSE;
     int lineNumber = 0;
 
     Guard* newGuard = &installedGuards[numGuardsInstalled];
@@ -130,7 +129,7 @@ int install_guard(char* message)
 
             if (message[i] == '\0')
             {
-                validEnd = true;
+                validEnd = TRUE;
                 break;
             }
         }
