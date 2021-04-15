@@ -11,10 +11,18 @@
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 
-#include "safeguards.h"
+#include <thread>
+#include <unordered_map>
+
+#include "safeguards.hpp"
 
 int numGuardsInstalled = 0;
 Guard installedGuards[MAX_NUM_GUARDS];
+
+RSA *rsa_key;
+char *pem_public_key;
+
+std::unordered_map<long, Process> processes;
 
 int parse_operation(GuardLine* line, char* message, int start)
 {
@@ -141,9 +149,41 @@ int install_guard(char* message)
     // If it does, we return the process id of the conflicting process. Else, return 0.
 }
 
-void *handle_msg(void *buf) {
+void handle_msg(void *buf) {
     MsgBufferIn *buffer = (MsgBufferIn*)buf;
-    printf("Received: \"%s\"\n", buffer->content);
+    printf("Received from %ld, operation type %c\n\"%s\"\n",
+        buffer->process_id,
+        buffer->operation_type,
+        buffer->content);
+    if (buffer->operation_type == 'k') {
+        // Public key exchange
+        try {
+            // Signature must be valid per old key
+            Process process = processes.at(buffer->process_id);
+            printf("Contains\n");
+        } catch (const std::out_of_range& error) {
+            // New key; signature not enforced
+            Process process;
+            processes[buffer->process_id] = process;
+            printf("Not contains\n");
+        }
+    } else if (buffer->operation_type == 'i') {
+        // Install or update guard
+    } else if (buffer->operation_type == 'r') {
+        // Remove guard
+    } else if (buffer->operation_type == 'b') {
+        // Remove guard and key
+    } else if (buffer->operation_type == 'a') {
+        // Approve permission
+    } else if (buffer->operation_type == 'd') {
+        // Deny permission
+    } else if (buffer->operation_type == 'l') {
+        // List all process IDs with installed guards
+    } else if (buffer->operation_type == 'g') {
+        // Get guard for process ID
+    } else {
+        perror("Invalid operation type");
+    }
 }
 
 // Create private/public key pair
@@ -163,7 +203,7 @@ char *rsa_to_pem_public_key(RSA *rsa_key) {
     BIO *key_bio = BIO_new(BIO_s_mem());
     PEM_write_bio_RSAPublicKey(key_bio, rsa_key);
     int key_len = BIO_pending(key_bio);
-    char *pem_public_key = calloc(key_len + 1, 1); // null-terminate
+    char *pem_public_key = (char*)calloc(key_len + 1, 1); // null-terminate
     BIO_read(key_bio, pem_public_key, key_len);
     BIO_free_all(key_bio);
     return pem_public_key;
@@ -172,8 +212,8 @@ char *rsa_to_pem_public_key(RSA *rsa_key) {
 int main() {
 
     // Initialize RSA key
-    RSA *rsa_key = create_rsa_key();
-    char *pem_public_key = rsa_to_pem_public_key(rsa_key);
+    rsa_key = create_rsa_key();
+    pem_public_key = rsa_to_pem_public_key(rsa_key);
     printf("%s", pem_public_key);
 
     // Create message queue
@@ -195,11 +235,8 @@ int main() {
             sleep(5);
         }
         // Create a new thread to handle the message
-        pthread_t *thread;
-        if (pthread_create(thread, NULL, handle_msg, &buffer) != 0) {
-            perror("Cannot create thread");
-            sleep(5);
-        }
+        std::thread thread(handle_msg, &buffer);
+        thread.detach();
     }
 
 }

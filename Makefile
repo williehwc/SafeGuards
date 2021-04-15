@@ -1,5 +1,5 @@
 safeguards:
-	gcc safeguards.c -o safeguards.out -l crypto -l pthread
+	g++ safeguards.cpp -o safeguards.out -l crypto -l pthread
 
 example:
 	gcc z3_example.c -o z3_example.obj -c -I ../z3/src/api
