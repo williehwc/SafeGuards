@@ -15,6 +15,8 @@ CONTENT_LEN = 2048
 SIG_LEN = 64
 
 class MsgBuffer(ctypes.Structure):
+    def set_operation_type(self, c):
+        self.operation_type = ctypes.c_byte(ord(c))
     def set_content(self, s):
         for i, c in enumerate(s):
             self.content[i] = ctypes.c_byte(ord(c))
@@ -24,7 +26,7 @@ class MsgBufferIn(MsgBuffer):
         ('recipient', ctypes.c_long),
         ('process_id', ctypes.c_long),
         ('message_sig', ctypes.c_byte*SIG_LEN),
-        ('operation_type;', ctypes.c_byte),
+        ('operation_type', ctypes.c_byte),
         ('content', ctypes.c_byte*CONTENT_LEN),
     ]
 
@@ -33,7 +35,7 @@ class MsgBufferOut(MsgBuffer):
         ('recipient', ctypes.c_long),
         ('message_sig', ctypes.c_byte*SIG_LEN),
         ('response_type', ctypes.c_byte),
-        ('operation_type;', ctypes.c_byte),
+        ('operation_type', ctypes.c_byte),
         ('content', ctypes.c_byte*CONTENT_LEN),
     ]
 

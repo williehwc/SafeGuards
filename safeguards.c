@@ -171,6 +171,7 @@ char *rsa_to_pem_public_key(RSA *rsa_key) {
 
 int main() {
 
+    // Initialize RSA key
     RSA *rsa_key = create_rsa_key();
     char *pem_public_key = rsa_to_pem_public_key(rsa_key);
     printf("%s", pem_public_key);
@@ -185,7 +186,7 @@ int main() {
     }
 
     // Listen for messages
-    int msg_type = 0;
+    int msg_type = 1;
     MsgBufferIn buffer;
     while (1) {
         // The following line will wait for a message

@@ -37,6 +37,12 @@ typedef struct MsgBufferDebug {
    char msg_text[CONTENT_LEN];
 } MsgBufferDebug;
 
+// Process definition
+typedef struct Process {
+   long process_id;
+   char public_key[CONTENT_LEN];
+   // Public keys are ~426 chars, but this is more futureproof
+} Process;
 
 // Guard definitions
 

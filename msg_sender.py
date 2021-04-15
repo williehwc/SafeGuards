@@ -8,7 +8,7 @@ queue = Msgq(QUEUE_KEY)
 buffer = MsgBufferIn()
 buffer.recipient = 1
 buffer.process_id = os.getpid()
-buffer.operation_type = 'z'
+buffer.set_operation_type('k')
 buffer.set_content('Hello world')
 
 queue.send(buffer)
