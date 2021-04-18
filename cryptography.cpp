@@ -43,15 +43,15 @@ bool RSAVerifySignature( RSA* rsa,
   int AuthStatus = EVP_DigestVerifyFinal(m_RSAVerifyCtx, MsgHash, MsgHashLen);
   if (AuthStatus==1) {
     *Authentic = true;
-    // EVP_MD_CTX_cleanup(m_RSAVerifyCtx);
+    EVP_MD_CTX_free(m_RSAVerifyCtx);
     return true;
   } else if(AuthStatus==0){
     *Authentic = false;
-    // EVP_MD_CTX_cleanup(m_RSAVerifyCtx);
+    EVP_MD_CTX_free(m_RSAVerifyCtx);
     return true;
   } else{
     *Authentic = false;
-    // EVP_MD_CTX_cleanup(m_RSAVerifyCtx);
+    EVP_MD_CTX_free(m_RSAVerifyCtx);
     return false;
   }
 }
@@ -124,7 +124,7 @@ bool RSASign( RSA* rsa,
   if (EVP_DigestSignFinal(m_RSASignCtx, *EncMsg, MsgLenEnc) <= 0) {
       return false;
   }
-//   EVP_MD_CTX_cleanup(m_RSASignCtx);
+  EVP_MD_CTX_free(m_RSASignCtx);
   return true;
 }
 
@@ -145,6 +145,7 @@ void Base64Encode( const unsigned char* buffer,
   BIO_free_all(bio);
 
   *base64Text=(*bufferPtr).data;
+  // (*base64Text)[(*bufferPtr).length] = '\0';
 }
 
 char* signMessage(RSA *rsa_key, std::string plainText) {
@@ -152,9 +153,9 @@ char* signMessage(RSA *rsa_key, std::string plainText) {
   char* base64Text;
   size_t encMessageLength;
   RSASign(rsa_key, (unsigned char*) plainText.c_str(), plainText.length(), &encMessage, &encMessageLength);
-  std::cout << encMessageLength << std::endl;
+  // std::cout << encMessageLength << std::endl;
   Base64Encode(encMessage, encMessageLength, &base64Text);
-  std::cout << strlen(base64Text) << std::endl;
+  // std::cout << strlen(base64Text) << std::endl;
   free(encMessage);
   return base64Text;
 }
@@ -177,7 +178,7 @@ RSA *create_rsa_key() {
 // Convert public key to PEM format so it can be passed as a string
 char *rsa_to_pem_public_key(RSA *rsa_key) {
     BIO *key_bio = BIO_new(BIO_s_mem());
-    PEM_write_bio_RSAPublicKey(key_bio, rsa_key);
+    PEM_write_bio_RSA_PUBKEY(key_bio, rsa_key);
     int key_len = BIO_pending(key_bio);
     char *pem_public_key = (char*)calloc(key_len + 1, 1); // null-terminate
     BIO_read(key_bio, pem_public_key, key_len);
@@ -199,14 +200,3 @@ char *signMessageC(RSA *rsa_key, char *plainText) {
 #ifdef FOR_C
 }
 #endif
-
-// #ifdef PYBIND
-
-// PYBIND11_MODULE(example, m) {
-//     m.def("create_rsa_key", &create_rsa_key, "Create RSA key");
-//     m.def("rsa_to_pem_public_key", &rsa_to_pem_public_key, "Convert public key to PEM format");
-//     m.def("verifySignature", &verifySignature, "Verify signature");
-//     m.def("signMessage", &signMessage, "Sign message");
-// }
-
-// #endif

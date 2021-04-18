@@ -161,7 +161,7 @@ void send_msg(long recipient, char response_type, char operation_type, char *con
     message += operation_type;
     message += content;
     char *signature = signMessage(rsa_key, message);
-    // TODO
+    strcpy(buffer.response_sig, signature);
     msgsnd(recipient, &buffer, sizeof buffer, 0);
 }
 

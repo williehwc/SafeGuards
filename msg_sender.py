@@ -18,5 +18,6 @@ buffer.set_operation_type('k')
 buffer.set_content('Hello world')
 
 buffer.sign_message(rsa_key)
+print("Verification:", buffer.verify_signature(public_key))
 
 queue.send(buffer)

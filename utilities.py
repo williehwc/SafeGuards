@@ -9,12 +9,17 @@ _msgrcv = libc.msgrcv
 _msgctl = libc.msgctl
 _ftok = libc.ftok
 
-crypto = ctypes.cdll.LoadLibrary('./cryptography.so')
+try:
+    crypto = ctypes.cdll.LoadLibrary('./cryptography.so')
+except:
+    print("Please run: make cryptography_for_ctypes", file=sys.stderr)
+    sys.exit(1)
+
 crypto.rsa_to_pem_public_key.restype = ctypes.c_char_p
 crypto.verifySignatureC.restype = ctypes.c_bool
 crypto.signMessageC.restype = ctypes.c_char_p
 
-PERMISSIONS = 438 # 0666
+PERMISSIONS = 438 # i.e., 0666
 
 CONTENT_LEN = 2048
 SIG_LEN = 512
@@ -46,9 +51,14 @@ class MsgBufferIn(MsgBuffer):
         for i in range(CONTENT_LEN):
             message[i + 1] = self.content[i]
         signature = crypto.signMessageC(rsa_key, message)
-        print(signature)
         for i, c in enumerate(signature):
             self.message_sig[i] = c
+    def verify_signature(self, public_key):
+        message = (ctypes.c_byte * (CONTENT_LEN + 1))()
+        message[0] = self.operation_type
+        for i in range(CONTENT_LEN):
+            message[i + 1] = self.content[i]
+        return crypto.verifySignatureC(public_key, message, self.message_sig)
 
 class MsgBufferOut(MsgBuffer):
     _fields_ = [
@@ -58,6 +68,14 @@ class MsgBufferOut(MsgBuffer):
         ('operation_type', ctypes.c_byte),
         ('content', ctypes.c_byte*CONTENT_LEN),
     ]
+    def verify_signature(self, public_key):
+        message = (ctypes.c_byte * (CONTENT_LEN + 2))()
+        message[0] = self.response_type
+        message[1] = self.operation_type
+        for i in range(CONTENT_LEN):
+            message[i + 2] = self.content[i]
+        signature = crypto.signMessageC(rsa_key, message)
+        return crypto.verifySignatureC(public_key, message, self.message_sig)
 
 # IN and OUT are from the POV of SafeGuards, not the sender
 
