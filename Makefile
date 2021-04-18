@@ -1,5 +1,8 @@
 safeguards:
-	g++ safeguards.cpp -o safeguards.out -l crypto -l pthread
+	g++ safeguards.cpp cryptography.cpp -o safeguards.out -l crypto -l pthread
+
+cryptography_for_ctypes:
+	g++ -shared -o cryptography.so cryptography.cpp -l crypto -fPIC -D FOR_C
 
 example:
 	gcc z3_example.c -o z3_example.obj -c -I ../z3/src/api

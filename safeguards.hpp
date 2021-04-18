@@ -4,11 +4,9 @@
 
 #define MAX_PARAMETERS 2
 
-#define SIG_LEN 64
+#define SIG_LEN 512
 #define QUEUE_KEY 108
 #define QUEUE_PERM 0600
-
-#define RSA_BITS 2048
 
 #define TRUE 1
 #define FALSE 0
@@ -36,13 +34,6 @@ typedef struct MsgBufferDebug {
    long msg_type;
    char msg_text[CONTENT_LEN];
 } MsgBufferDebug;
-
-// Process definition
-typedef struct Process {
-   long process_id;
-   char public_key[CONTENT_LEN];
-   // Public keys are ~426 chars, but this is more futureproof
-} Process;
 
 // Guard definitions
 
@@ -167,3 +158,17 @@ int parseNumber(char* str, int* num)
    }
    return -1;
 }
+
+// Process definition
+typedef struct Process {
+   long process_id;
+   // Public keys are ~426 chars, but this is more futureproof
+   char public_key[CONTENT_LEN];
+   GuardLine guard[MAX_GUARD_SIZE];
+} Process;
+
+// Cryptography functions, see cryptography.cpp
+RSA *create_rsa_key();
+char *rsa_to_pem_public_key(RSA *rsa_key);
+bool verifySignature(std::string publicKey, std::string plainText, char* signatureBase64);
+char* signMessage(RSA *rsa_key, std::string plainText);

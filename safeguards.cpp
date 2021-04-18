@@ -9,10 +9,11 @@
 #include <pthread.h>
 
 #include <openssl/rsa.h>
-#include <openssl/pem.h>
 
 #include <thread>
 #include <unordered_map>
+
+#include <iostream>
 
 #include "safeguards.hpp"
 
@@ -147,26 +148,57 @@ int install_guard(char* message)
     // With guard parsed correctly, we proceed to run the guard on Z3 and evaluate if it conflicts
 
     // If it does, we return the process id of the conflicting process. Else, return 0.
+    return 0;
+}
+
+void send_msg(long recipient, char response_type, char operation_type, char *content) {
+    MsgBufferOut buffer;
+    buffer.recipient = recipient;
+    buffer.response_type = response_type;
+    buffer.operation_type = operation_type;
+    strcpy(buffer.content, content);
+    std::string message(1, response_type);
+    message += operation_type;
+    message += content;
+    char *signature = signMessage(rsa_key, message);
+    // TODO
+    msgsnd(recipient, &buffer, sizeof buffer, 0);
 }
 
 void handle_msg(void *buf) {
+
     MsgBufferIn *buffer = (MsgBufferIn*)buf;
     printf("Received from %ld, operation type %c\n\"%s\"\n",
         buffer->process_id,
         buffer->operation_type,
         buffer->content);
+
+    // Verify the signature
+    bool valid_sig = false;
+    // try {
+    //     Process process = processes.at(buffer->process_id);
+    //     // Signature must be valid per stored key
+    //     std::string message(1, buffer->operation_type);
+    //     message += buffer->content;
+    //     valid_sig = verifySignature(process.public_key, message, buffer->message_sig);
+    // } catch (const std::out_of_range& error) {
+    //     // Signature not enforced if operation type is 'k'
+    //     if (buffer->operation_type == 'k') {
+    //         Process process;
+    //         process.process_id = buffer->process_id;
+    //         processes[buffer->process_id] = process;
+    //         valid_sig = true;
+    //     }
+    // }
+    if (!valid_sig) {
+        // Respond with response type 'm'
+        // send_msg(buffer->process_id, 'm', buffer->operation_type, buffer->content);
+        return;
+    }
+
+    // Match the operation type
     if (buffer->operation_type == 'k') {
         // Public key exchange
-        try {
-            // Signature must be valid per old key
-            Process process = processes.at(buffer->process_id);
-            printf("Contains\n");
-        } catch (const std::out_of_range& error) {
-            // New key; signature not enforced
-            Process process;
-            processes[buffer->process_id] = process;
-            printf("Not contains\n");
-        }
     } else if (buffer->operation_type == 'i') {
         // Install or update guard
     } else if (buffer->operation_type == 'r') {
@@ -184,29 +216,7 @@ void handle_msg(void *buf) {
     } else {
         perror("Invalid operation type");
     }
-}
 
-// Create private/public key pair
-RSA *create_rsa_key() {
-    RSA *rsa_key = RSA_new();
-    BIGNUM *rsa_exponent = BN_new();
-	BN_set_word(rsa_exponent, RSA_F4); // RSA_F4 = 65537
-    int rsa_return = RSA_generate_key_ex(rsa_key, RSA_BITS, rsa_exponent, NULL);
-    if (!rsa_return) {
-        perror("Cannot generate RSA key pair");
-    }
-    return rsa_key;
-}
-
-// Convert public key to PEM format so it can be passed as a string
-char *rsa_to_pem_public_key(RSA *rsa_key) {
-    BIO *key_bio = BIO_new(BIO_s_mem());
-    PEM_write_bio_RSAPublicKey(key_bio, rsa_key);
-    int key_len = BIO_pending(key_bio);
-    char *pem_public_key = (char*)calloc(key_len + 1, 1); // null-terminate
-    BIO_read(key_bio, pem_public_key, key_len);
-    BIO_free_all(key_bio);
-    return pem_public_key;
 }
 
 int main() {
