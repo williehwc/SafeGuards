@@ -12,8 +12,11 @@
 
 #include <thread>
 #include <unordered_map>
+#include <vector>
 
 #include <iostream>
+
+#include "z3++.h"
 
 #include "safeguards.hpp"
 
@@ -103,8 +106,8 @@ int parse_line(GuardLine* line, char* message, int start, int end)
             message[i] == '\n' ||
             message[i] == '\0')
         {
-            // Fail if the line is not parsed right
-            if (parameterCount >= MAX_PARAMETERS)
+            // Fail if the line is not parsed right (CIDR has an extra param for simplicity)
+            if (parameterCount >= (MAX_PARAMETERS - line->op == cidr_in))
                 return -1;
 
             if (parameterCount == 0)
@@ -119,13 +122,122 @@ int parse_line(GuardLine* line, char* message, int start, int end)
     return 0;
 }
 
-int install_guard(char* message)
+void add_expressions(z3::context& c, Guard& g, std::vector<z3::expr>& exprVec)
+{
+    for (int i = 0; i < g.length; i++)
+    {
+        GuardLine gl = g.guard[i];
+        z3::expr x = c.int_val(0);
+
+        if (gl.type[0] == expression) x = exprVec[gl.values[0]];
+        if (gl.type[0] == variable) x = c.int_const(variables[gl.values[0]]);
+        if (gl.type[0] == integer) x = c.int_val(gl.values[0]);
+
+                // We process cidr_in separately
+        if (gl.op == cidr_in)
+        {
+            int y = gl.values[1];
+            int z = gl.values[2];
+
+            int allOnes = numAllOnes(z);
+
+            y = y & (~z);
+            z = y + z;
+
+            z3::expr newExp = x >= y && x <= z;
+            exprVec.push_back(newExp);            
+            continue;
+        }
+
+        z3::expr y = c.int_val(0);
+        if (gl.type[1] == expression) y = exprVec[gl.values[1]];
+        if (gl.type[1] == variable) y = c.int_const(variables[gl.values[1]]);
+        if (gl.type[1] == integer) y = c.int_val(gl.values[1]);
+
+        z3::expr newExp = c.int_val(0);
+        switch (gl.op)
+        {
+            case bool_and:
+                newExp = x && y;
+                break;
+            case bool_or:
+                newExp = x || y;
+                break;
+            case bool_xor:
+                newExp = (!x) != (!y);
+                break;
+            case bool_not:
+                newExp = !x;
+                break;
+            case equal:
+                newExp = x == y;
+                break;
+            case not_equal:
+                newExp = x != y;
+                break;
+            case greater:
+                newExp = x > y;
+                break;
+            case greater_or_equal:
+                newExp = x >= y;
+                break;
+            case smaller:
+                newExp = x < y;
+                break;
+            case smaller_or_equal:
+                newExp = x <= y;
+                break;
+            case plus:
+                newExp = x + y;
+                break;
+            case minus:
+                newExp = x - y;
+                break;
+            case multiply:
+                newExp = x * y;
+                break;
+            case divide:
+                newExp = x / y;
+                break;
+            case modulus:
+                newExp = x % y;
+        }
+
+        exprVec.push_back(newExp);
+    }
+}
+
+bool test_guards(int i, int j) {
+    z3::context c;
+
+    Guard g1 = installedGuards[i];
+    Guard g2 = installedGuards[j];
+
+    std::vector<z3::expr> pastExpressionsG1;
+    std::vector<z3::expr> pastExpressionsG2;
+
+    add_expressions(c, g1, pastExpressionsG1);
+    add_expressions(c, g2, pastExpressionsG2);
+
+    z3::solver s(c);
+    s.add(pastExpressionsG1[g1.length-1]);
+    s.add(pastExpressionsG2[g2.length-1]);
+
+    if (s.check() == z3::unsat)
+        return true; // NO CONFLICT
+    else
+        return false;
+}
+
+int install_guard(int pid, char* message)
 {
     int lineStart = 0;
     int validEnd = FALSE;
     int lineNumber = 0;
 
     Guard* newGuard = &installedGuards[numGuardsInstalled];
+    
+    newGuard->pid = pid;
     for (int i = 0; i < CONTENT_LEN; i++)
     {
         if (message[i] == '\n' || message[i] == '\0')
@@ -133,6 +245,15 @@ int install_guard(char* message)
             (newGuard->guard[lineNumber]).lineNumber = lineNumber;
             if (parse_line(&(newGuard->guard[lineNumber]), message, lineStart, i) == -1)
                 return -1;
+
+            // Check that CIDR line uses only valid values for the second and third parameter
+            if ((newGuard->guard[lineNumber]).op == cidr_in)
+            {
+                if ((newGuard->guard[lineNumber]).type[1] != integer) return -1;
+                if ((newGuard->guard[lineNumber]).type[2] != integer) return -1;
+                if ((newGuard->guard[lineNumber]).values[2] > 32 || (newGuard->guard[lineNumber]).values[2] < 0) return -1;            
+            }
+
             lineStart = i+1;
             lineNumber++;
 
@@ -144,10 +265,16 @@ int install_guard(char* message)
         }
     }
     if (!validEnd) return -1;
+    newGuard->length = lineNumber;
 
     // With guard parsed correctly, we proceed to run the guard on Z3 and evaluate if it conflicts
-
     // If it does, we return the process id of the conflicting process. Else, return 0.
+    for (int i = 0; i < numGuardsInstalled; i++)
+    {
+        if (installedGuards[i].pid == pid) continue;
+        if (!test_guards(numGuardsInstalled, i)) return installedGuards[i].pid;
+    }
+
     return 0;
 }
 
