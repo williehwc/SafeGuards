@@ -100,6 +100,7 @@ int parse_line(GuardLine* line, char* message, int start, int end)
 {
     int parameterStart = 0;
     int parameterCount = 0;
+
     for (int i = start; i <= end; i++)
     {
         if (message[i] == ' ' ||
@@ -107,16 +108,19 @@ int parse_line(GuardLine* line, char* message, int start, int end)
             message[i] == '\0')
         {
             // Fail if the line is not parsed right (CIDR has an extra param for simplicity)
-            if (parameterCount >= (MAX_PARAMETERS - line->op == cidr_in))
+            if (parameterCount > MAX_PARAMETERS)
                 return -1;
 
-            if (parameterCount == 0)
+            if (parameterCount == 0) {
                 if (parse_operation(line, message, parameterStart) == -1)
                     return -1;
-            else
+            }
+            else {
                 if (parse_value(line, parameterCount, message, parameterStart) == -1)
                     return -1;
+            }
             parameterCount++;
+            parameterStart = i+1;
         }
     }
     return 0;
@@ -275,6 +279,7 @@ int install_guard(int pid, char* message)
         if (!test_guards(numGuardsInstalled, i)) return installedGuards[i].pid;
     }
 
+    numGuardsInstalled++;
     return 0;
 }
 
