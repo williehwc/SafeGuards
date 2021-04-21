@@ -1,6 +1,6 @@
 # Based on https://github.com/jj4jj/pymsgq
 
-import ctypes, os, sys
+import ctypes, os, sys, errno
 
 libc = ctypes.CDLL('libc.so.6', use_errno=True)
 _msgget = libc.msgget
@@ -34,8 +34,15 @@ class MsgBuffer(ctypes.Structure):
     def set_operation_type(self, c):
         self.operation_type = ctypes.c_byte(ord(c))
     def set_content(self, s):
-        for i, c in enumerate(s):
-            self.content[i] = ctypes.c_byte(ord(c))
+        if isinstance(s, str):
+            for i, c in enumerate(s):
+                self.content[i] = ctypes.c_byte(ord(c))
+        else:
+            for i, c in enumerate(s):
+                self.content[i] = c
+    def get_content_readable(self):
+        # Call .decode('ascii') to convert to Python string
+        return ctypes.c_char_p(ctypes.addressof(self.content)).value
 
 class MsgBufferIn(MsgBuffer):
     _fields_ = [
@@ -63,7 +70,7 @@ class MsgBufferIn(MsgBuffer):
 class MsgBufferOut(MsgBuffer):
     _fields_ = [
         ('recipient', ctypes.c_long),
-        ('message_sig', ctypes.c_byte*SIG_LEN),
+        ('response_sig', ctypes.c_byte*SIG_LEN),
         ('response_type', ctypes.c_byte),
         ('operation_type', ctypes.c_byte),
         ('content', ctypes.c_byte*CONTENT_LEN),
@@ -74,8 +81,7 @@ class MsgBufferOut(MsgBuffer):
         message[1] = self.operation_type
         for i in range(CONTENT_LEN):
             message[i + 2] = self.content[i]
-        signature = crypto.signMessageC(rsa_key, message)
-        return crypto.verifySignatureC(public_key, message, self.message_sig)
+        return crypto.verifySignatureC(public_key, message, self.response_sig)
 
 # IN and OUT are from the POV of SafeGuards, not the sender
 
@@ -88,12 +94,27 @@ class Msgq(object):
             raise Exception('create msgq error:%s' % (os.strerror(ctypes.get_errno())))
     
     def send(self, buff):
-        err = _msgsnd(self.mqid, ctypes.byref(buff), ctypes.sizeof(MsgBufferIn) - ctypes.sizeof(ctypes.c_long), 0)
+        err = _msgsnd(self.mqid, ctypes.byref(buff), ctypes.sizeof(buff) - ctypes.sizeof(ctypes.c_long), 0)
         if err < 0:
             eno = ctypes.get_errno()
-            if eno == errno.EAGAIN:
-                return -1
-            if eno == errno.EINTR:
-                return -2
-            raise Exception('send msgq error:%s' % os.strerror(ctypes.get_errno()))
+            # if eno == errno.EAGAIN:
+            #     return -1
+            # if eno == errno.EINTR:
+            #     return -2
+            raise Exception('send msgq error:%s' % os.strerror(eno))
+        return err
+
+    def recv(self, buff, msg_type=0, no_wait=False):
+        # For SafeGuards, msg_type should be the process ID
+        flags = 0
+        if no_wait:
+            flags = 2048
+        err = _msgrcv(self.mqid, ctypes.byref(buff), ctypes.sizeof(buff), msg_type, flags)
+        if err == -1:
+            eno = ctypes.get_errno()
+            # if eno == errno.ENOMSG or eno == errno.EAGAIN or eno == errno.EINTR:
+            #     return -1
+            # if eno == errno.E2BIG:
+            #     return -2
+            raise Exception('recv msgq error:%s' % os.strerror(eno))
         return err

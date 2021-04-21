@@ -23,6 +23,8 @@ Guard installedGuards[MAX_NUM_GUARDS];
 RSA *rsa_key;
 char *pem_public_key;
 
+int queue_id;
+
 std::unordered_map<long, Process> processes;
 
 int parse_operation(GuardLine* line, char* message, int start)
@@ -152,6 +154,11 @@ int install_guard(char* message)
 }
 
 void send_msg(long recipient, char response_type, char operation_type, char *content) {
+    printf("Sending to %ld, response type %c, operation type %c\n\"%s\"\n",
+        recipient,
+        response_type,
+        operation_type,
+        content);
     MsgBufferOut buffer;
     buffer.recipient = recipient;
     buffer.response_type = response_type;
@@ -162,7 +169,7 @@ void send_msg(long recipient, char response_type, char operation_type, char *con
     message += content;
     char *signature = signMessage(rsa_key, message);
     strcpy(buffer.response_sig, signature);
-    msgsnd(recipient, &buffer, sizeof buffer, 0);
+    msgsnd(queue_id, &buffer, sizeof buffer, 0);
 }
 
 void handle_msg(void *buf) {
@@ -175,30 +182,37 @@ void handle_msg(void *buf) {
 
     // Verify the signature
     bool valid_sig = false;
-    // try {
-    //     Process process = processes.at(buffer->process_id);
-    //     // Signature must be valid per stored key
-    //     std::string message(1, buffer->operation_type);
-    //     message += buffer->content;
-    //     valid_sig = verifySignature(process.public_key, message, buffer->message_sig);
-    // } catch (const std::out_of_range& error) {
-    //     // Signature not enforced if operation type is 'k'
-    //     if (buffer->operation_type == 'k') {
-    //         Process process;
-    //         process.process_id = buffer->process_id;
-    //         processes[buffer->process_id] = process;
-    //         valid_sig = true;
-    //     }
-    // }
+    try {
+        Process process = processes.at(buffer->process_id);
+        // Signature must be valid per stored key
+        std::string message(1, buffer->operation_type);
+        message += buffer->content;
+        valid_sig = verifySignature(process.public_key, message, buffer->message_sig);
+        if (valid_sig) printf("Signature valid\n");
+    } catch (const std::out_of_range& error) {
+        // Signature not enforced if operation type is 'k'
+        if (buffer->operation_type == 'k') {
+            Process process;
+            process.process_id = buffer->process_id;
+            processes[buffer->process_id] = process;
+            valid_sig = true;
+        }
+        printf("Signature not enforced\n");
+    }
     if (!valid_sig) {
         // Respond with response type 'm'
-        // send_msg(buffer->process_id, 'm', buffer->operation_type, buffer->content);
+        printf("Signature fail\n");
+        send_msg(buffer->process_id, 'm', buffer->operation_type, buffer->content);
         return;
     }
+
+    Process *process = &(processes[buffer->process_id]);
 
     // Match the operation type
     if (buffer->operation_type == 'k') {
         // Public key exchange
+        strcpy(process->public_key, buffer->content);
+        send_msg(buffer->process_id, 'k', buffer->operation_type, pem_public_key);
     } else if (buffer->operation_type == 'i') {
         // Install or update guard
     } else if (buffer->operation_type == 'r') {
@@ -227,7 +241,7 @@ int main() {
     printf("%s", pem_public_key);
 
     // Create message queue
-    int queue_id = msgget(QUEUE_KEY, QUEUE_PERM | IPC_CREAT);
+    queue_id = msgget(QUEUE_KEY, QUEUE_PERM | IPC_CREAT);
     if (queue_id == -1) {
         perror("Cannot initialize queue");
         exit(1);

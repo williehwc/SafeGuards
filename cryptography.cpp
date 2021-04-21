@@ -95,6 +95,10 @@ RSA* createPublicRSA(std::string key) {
 
 bool verifySignature(std::string publicKey, std::string plainText, char* signatureBase64) {
   RSA* publicRSA = createPublicRSA(publicKey);
+  if (publicRSA == NULL) {
+    fprintf(stderr, "Public key error, signature verification will fail\n");
+    return false;
+  }
   unsigned char* encMessage;
   size_t encMessageLength;
   bool authentic;
