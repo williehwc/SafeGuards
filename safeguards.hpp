@@ -2,7 +2,7 @@
 #define MAX_GUARD_SIZE 32
 #define MAX_NUM_GUARDS 16
 
-#define MAX_PARAMETERS 2
+#define MAX_PARAMETERS 3
 
 #define SIG_LEN 512
 #define QUEUE_KEY 108
@@ -81,6 +81,7 @@ typedef struct GuardLine {
 
 typedef struct Guard {
    int pid;
+   int length;
    GuardLine guard[MAX_GUARD_SIZE];
 } Guard;
 
@@ -159,12 +160,22 @@ int parseNumber(char* str, int* num)
    return -1;
 }
 
+int numAllOnes(int z) {
+   int result = 0;
+
+   for (int i = 0; i < z; i++)
+   {
+      result = result * 2 + 1;
+   }
+
+   return result;
+}
+
 // Process definition
 typedef struct Process {
    long process_id;
    // Public keys are ~426 chars, but this is more futureproof
    char public_key[CONTENT_LEN];
-   GuardLine guard[MAX_GUARD_SIZE];
 } Process;
 
 // Cryptography functions, see cryptography.cpp

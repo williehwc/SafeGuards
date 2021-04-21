@@ -1,5 +1,5 @@
 safeguards:
-	g++ safeguards.cpp cryptography.cpp -o safeguards.out -l crypto -l pthread
+	g++ safeguards.cpp cryptography.cpp -o safeguards.out -l crypto -l pthread 	-I ../z3/src/api -I../z3/src/api/c++ -fopenmp -lrt -lz3
 
 cryptography_for_ctypes:
 	g++ -shared -o cryptography.so cryptography.cpp -l crypto -fPIC -D FOR_C
