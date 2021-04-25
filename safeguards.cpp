@@ -448,7 +448,35 @@ void op_install_guard(Process *process, MsgBufferIn *buffer) {
 }
 
 void op_remove_guard(Process *process, MsgBufferIn *buffer) {
-    // TODO
+    Guard new_guard;
+    std::string guard_key;
+
+    if (parse_guard(buffer->content, &new_guard, &guard_key) == -1) {
+        printf("op_install_guard: syntax error\n");
+        send_msg(buffer->process_id, 'x', buffer->operation_type, buffer->content);
+        return;
+    }
+
+    // Update OR install guard
+    // remove guard key
+    try {
+        Guard old_guard = process->guards.at(guard_key);
+    } catch (const std::out_of_range& error) {
+        // guard does not exist so nothing to remove
+    }
+
+    // remove guard from the unordered map guards
+    process->guards.erase(guard_key);
+
+    // remvove guard key from the vector
+    for (unsigned j = 0; j < process->guard_keys.size(); j++) {
+        if (process->guard_keys[j].compare(guard_key) == 0) {
+            process->guard_keys.erase (process->guard_keys.begin()+j);
+        }
+    }
+    
+    printf("op_remove_guard: okay\n");
+    send_msg(buffer->process_id, 'o', buffer->operation_type, buffer->content);
 }
 
 void op_process_bye(MsgBufferIn *buffer) {
@@ -648,5 +676,4 @@ int main() {
         std::thread thread(handle_msg, &buffer);
         thread.detach();
     }
-
 }
