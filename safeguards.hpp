@@ -1,6 +1,7 @@
 #define CONTENT_LEN 2048
-#define MAX_GUARD_SIZE 32
-#define MAX_NUM_GUARDS 16
+// #define MAX_GUARD_SIZE 32
+// #define MAX_NUM_PERMISSIONS 32
+// #define MAX_NUM_GUARDS 16
 
 #define MAX_PARAMETERS 3
 
@@ -65,7 +66,8 @@ enum Operators {
 enum Parameter_Type {
    expression,
    variable,
-   integer  
+   integer,
+   unused
 };
 
 typedef struct GuardLine {
@@ -80,9 +82,8 @@ typedef struct GuardLine {
 } GuardLine;
 
 typedef struct Guard {
-   int pid;
-   int length;
-   GuardLine guard[MAX_GUARD_SIZE];
+   std::vector<long> permissions;
+   std::vector<GuardLine> guard_lines;
 } Guard;
 
 const int variableCount = 35;
@@ -153,7 +154,7 @@ int parseNumber(char* str, int* num)
       int val = str[i] - '0';
 
       // Return error in overflow
-      if ((*num) < (*num) * 10 + val)
+      if ((*num) > (*num) * 10 + val)
          return -1;
       (*num) = (*num) * 10 + val;
    }
@@ -176,6 +177,8 @@ typedef struct Process {
    long process_id;
    // Public keys are ~426 chars, but this is more futureproof
    char public_key[CONTENT_LEN];
+   std::unordered_map<std::string, Guard> guards;
+   std::vector<std::string> guard_keys;
 } Process;
 
 // Cryptography functions, see cryptography.cpp

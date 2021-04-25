@@ -109,7 +109,7 @@ class Msgq(object):
         flags = 0
         if no_wait:
             flags = 2048
-        err = _msgrcv(self.mqid, ctypes.byref(buff), ctypes.sizeof(buff), msg_type, flags)
+        err = _msgrcv(self.mqid, ctypes.byref(buff), ctypes.sizeof(buff) - ctypes.sizeof(ctypes.c_long), msg_type, flags)
         if err == -1:
             eno = ctypes.get_errno()
             # if eno == errno.ENOMSG or eno == errno.EAGAIN or eno == errno.EINTR:

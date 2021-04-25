@@ -21,7 +21,6 @@
 #include "safeguards.hpp"
 
 int numGuardsInstalled = 0;
-Guard installedGuards[MAX_NUM_GUARDS];
 
 RSA *rsa_key;
 char *pem_public_key;
@@ -29,6 +28,51 @@ char *pem_public_key;
 int queue_id;
 
 std::unordered_map<long, Process> processes;
+std::vector<long> process_ids;
+
+std::string guard_to_str(Guard guard, std::string guard_key) {
+    std::string guard_str = guard_key;
+    for (unsigned i = 0; i < guard.permissions.size(); i++) {
+        guard_str += " " + std::to_string(guard.permissions[i]);
+    }
+    for (unsigned i = 0; i < guard.guard_lines.size(); i++) {
+        guard_str += "\n";
+        GuardLine *guard_line = &guard.guard_lines[i];
+
+        if (guard_line->op == equal) guard_str += "=";
+        else if (guard_line->op == not_equal) guard_str += "!=";
+        else if (guard_line->op == greater_or_equal) guard_str += ">=";
+        else if (guard_line->op == greater) guard_str += ">";
+        else if (guard_line->op == smaller_or_equal) guard_str += "<=";
+        else if (guard_line->op == smaller) guard_str += "<";
+        else if (guard_line->op == cidr_in) guard_str += "IN";
+        else if (guard_line->op == bool_and) guard_str += "AND";
+        else if (guard_line->op == bool_or) guard_str += "OR";
+        else if (guard_line->op == bool_xor) guard_str += "XOR";
+        else if (guard_line->op == bool_not) guard_str += "NOT";
+        else if (guard_line->op == plus) guard_str += "+";
+        else if (guard_line->op == minus) guard_str += "-";
+        else if (guard_line->op == multiply) guard_str += "*";
+        else if (guard_line->op == divide) guard_str += "/";
+        else if (guard_line->op == modulus) guard_str += "%";
+
+        for (unsigned j = 0; j < MAX_PARAMETERS; j++) {
+            guard_str += " ";
+            switch (guard_line->type[j]) {
+                case expression:
+                    guard_str += "^" + std::to_string(guard_line->values[j]);
+                    break;
+                case variable:
+                    guard_str += variables[guard_line->values[j]];
+                    break;
+                case integer:
+                    guard_str += std::to_string(guard_line->values[j]);
+                    break;
+            }
+        }
+    }
+    return guard_str;
+}
 
 int parse_operation(GuardLine* line, char* message, int start)
 {
@@ -52,7 +96,10 @@ int parse_operation(GuardLine* line, char* message, int start)
     else if (stringEqual(opStart, "/")) op = divide;
     else if (stringEqual(opStart, "%")) op = modulus;
 
-    if (op == op_fail) return -1;
+    if (op == op_fail) {
+        std::cerr << "Syntax error 01" << std::endl;
+        return -1;
+    }
     line->op = op;
     return 0;
 }
@@ -60,16 +107,25 @@ int parse_operation(GuardLine* line, char* message, int start)
 int parse_value(GuardLine* line, int param_num, char* message, int start)
 {
     char* varStart = message + start;
-    int val;
+    int val = 0;
 
     // Check if expression starts with ^
     if (varStart[0] == '^')
     {
         varStart += 1;
         // ERROR CONDITIONS
-        if (parseNumber(varStart, &val) == -1) return -1;
-        if (val >= line->lineNumber) return -1;
-        if (val < 0) return -1;
+        if (parseNumber(varStart, &val) == -1) {
+            std::cerr << "Syntax error 02" << std::endl;
+            return -1;
+        }
+        if (val >= line->lineNumber) {
+            std::cerr << "Syntax error 03" << std::endl;
+            return -1;
+        }
+        if (val < 0) {
+            std::cerr << "Syntax error 04" << std::endl;
+            return -1;
+        }
 
         line->type[param_num] = expression;
         line->values[param_num] = val;
@@ -95,12 +151,13 @@ int parse_value(GuardLine* line, int param_num, char* message, int start)
     }
 
     // The parameter matches no known variable, expression or integer
+    std::cerr << "Syntax error 05" << std::endl;
     return -1;
 }
 
 int parse_line(GuardLine* line, char* message, int start, int end)
 {
-    int parameterStart = 0;
+    int parameterStart = start;
     int parameterCount = 0;
 
     for (int i = start; i <= end; i++)
@@ -110,29 +167,37 @@ int parse_line(GuardLine* line, char* message, int start, int end)
             message[i] == '\0')
         {
             // Fail if the line is not parsed right (CIDR has an extra param for simplicity)
-            if (parameterCount > MAX_PARAMETERS)
+            if (parameterCount > MAX_PARAMETERS) {
+                std::cerr << "Syntax error 06" << std::endl;
                 return -1;
+            }
 
             if (parameterCount == 0) {
-                if (parse_operation(line, message, parameterStart) == -1)
+                if (parse_operation(line, message, parameterStart) == -1) {
+                    std::cerr << "Syntax error 07" << std::endl;
                     return -1;
+                }
             }
             else {
-                if (parse_value(line, parameterCount, message, parameterStart) == -1)
+                if (parse_value(line, parameterCount, message, parameterStart) == -1) {
+                    std::cerr << "Syntax error 08" << std::endl;
                     return -1;
+                }
             }
             parameterCount++;
             parameterStart = i+1;
         }
     }
+    while (parameterCount < MAX_PARAMETERS)
+        line->type[parameterCount] = unused;
     return 0;
 }
 
 void add_expressions(z3::context& c, Guard& g, std::vector<z3::expr>& exprVec)
 {
-    for (int i = 0; i < g.length; i++)
+    for (int i = 0; i < g.guard_lines.size(); i++)
     {
-        GuardLine gl = g.guard[i];
+        GuardLine gl = g.guard_lines[i];
         z3::expr x = c.int_val(0);
 
         if (gl.type[0] == expression) x = exprVec[gl.values[0]];
@@ -213,11 +278,8 @@ void add_expressions(z3::context& c, Guard& g, std::vector<z3::expr>& exprVec)
     }
 }
 
-bool test_guards(int i, int j) {
+bool test_guards(Guard g1, Guard g2) {
     z3::context c;
-
-    Guard g1 = installedGuards[i];
-    Guard g2 = installedGuards[j];
 
     std::vector<z3::expr> pastExpressionsG1;
     std::vector<z3::expr> pastExpressionsG2;
@@ -226,8 +288,8 @@ bool test_guards(int i, int j) {
     add_expressions(c, g2, pastExpressionsG2);
 
     z3::solver s(c);
-    s.add(pastExpressionsG1[g1.length-1]);
-    s.add(pastExpressionsG2[g2.length-1]);
+    s.add(pastExpressionsG1[g1.guard_lines.size()-1]);
+    s.add(pastExpressionsG2[g2.guard_lines.size()-1]);
 
     if (s.check() == z3::unsat)
         return true; // NO CONFLICT
@@ -235,57 +297,88 @@ bool test_guards(int i, int j) {
         return false;
 }
 
-int install_guard(int pid, char* message)
-{
+int parse_guard(char *message, Guard *new_guard, std::string *guard_key) {
+
     int lineStart = 0;
     int validEnd = FALSE;
     int lineNumber = 0;
 
-    Guard* newGuard = &installedGuards[numGuardsInstalled];
-    
-    newGuard->pid = pid;
-    for (int i = 0; i < CONTENT_LEN; i++)
-    {
-        if (message[i] == '\n' || message[i] == '\0')
-        {
-            (newGuard->guard[lineNumber]).lineNumber = lineNumber;
-            if (parse_line(&(newGuard->guard[lineNumber]), message, lineStart, i) == -1)
+    // Parse guard
+    *guard_key = "";
+    for (int i = 0; i < CONTENT_LEN; i++) {
+        if (message[i] == '\n' || message[i] == '\0') {
+            
+            // Header
+            if (guard_key->empty()) {
+                if (i == 0) {
+                    std::cerr << "Syntax error 09" << std::endl;
+                    return -1;
+                }
+                std::string header(message, i);
+                std::stringstream header_stream(header);
+                std::string guard_key_or_permission;
+                while (std::getline(header_stream, guard_key_or_permission, ' ')) {
+                    if (guard_key->empty()) {
+                        *guard_key = guard_key_or_permission;
+                    } else {
+                        try {
+                            new_guard->permissions.push_back(std::stol(guard_key_or_permission));
+                        } catch (...) {
+                            std::cerr << "Syntax error 10" << std::endl;
+                            return -1;
+                        }
+                    }
+                }
+                lineStart = i+1;
+                continue;
+            }
+
+            GuardLine guard_line;
+
+            (guard_line).lineNumber = lineNumber;
+            if (parse_line(&(guard_line), message, lineStart, i) == -1) {
+                std::cerr << "Syntax error 11" << std::endl;
                 return -1;
+            }
 
             // Check that CIDR line uses only valid values for the second and third parameter
-            if ((newGuard->guard[lineNumber]).op == cidr_in)
-            {
-                if ((newGuard->guard[lineNumber]).type[1] != integer) return -1;
-                if ((newGuard->guard[lineNumber]).type[2] != integer) return -1;
-                if ((newGuard->guard[lineNumber]).values[2] > 32 || (newGuard->guard[lineNumber]).values[2] < 0) return -1;            
+            if ((guard_line).op == cidr_in) {
+                if ((guard_line).type[1] != integer) {
+                    std::cerr << "Syntax error 12" << std::endl;
+                    return -1;
+                }
+                if ((guard_line).type[2] != integer) {
+                    std::cerr << "Syntax error 13" << std::endl;
+                    return -1;
+                }
+                if ((guard_line).values[2] > 32 || (guard_line).values[2] < 0) {
+                    std::cerr << "Syntax error 14" << std::endl;
+                    return -1;
+                }
             }
+
+            new_guard->guard_lines.push_back(guard_line);
 
             lineStart = i+1;
             lineNumber++;
 
-            if (message[i] == '\0')
-            {
+            if (message[i] == '\0') {
                 validEnd = TRUE;
                 break;
             }
         }
     }
-    if (!validEnd) return -1;
-    newGuard->length = lineNumber;
 
-    // With guard parsed correctly, we proceed to run the guard on Z3 and evaluate if it conflicts
-    // If it does, we return the process id of the conflicting process. Else, return 0.
-    for (int i = 0; i < numGuardsInstalled; i++)
-    {
-        if (installedGuards[i].pid == pid) continue;
-        if (!test_guards(numGuardsInstalled, i)) return installedGuards[i].pid;
+    if (!validEnd) {
+        std::cerr << "Syntax error 15" << std::endl;
+        return -1;
     }
 
-    numGuardsInstalled++;
     return 0;
+
 }
 
-void send_msg(long recipient, char response_type, char operation_type, char *content) {
+void send_msg(long recipient, char response_type, char operation_type, const char *content) {
     printf("Sending to %ld, response type %c, operation type %c\n\"%s\"\n",
         recipient,
         response_type,
@@ -301,7 +394,155 @@ void send_msg(long recipient, char response_type, char operation_type, char *con
     message += content;
     char *signature = signMessage(rsa_key, message);
     strcpy(buffer.response_sig, signature);
-    msgsnd(queue_id, &buffer, sizeof buffer, 0);
+    // if (verifySignature(pem_public_key, message, buffer.response_sig))
+    //     printf("Signature self-verification OK\n");
+    // else
+    //     printf("Signature self-verification failed\n");
+    msgsnd(queue_id, &buffer, sizeof(buffer) - sizeof(long), 0);
+}
+
+void op_public_key_exchange(Process *process, MsgBufferIn *buffer) {
+    strcpy(process->public_key, buffer->content);
+    printf("op_public_key_exchange: okay, view content\n");
+    send_msg(buffer->process_id, 'v', buffer->operation_type, pem_public_key);
+}
+
+void op_install_guard(Process *process, MsgBufferIn *buffer) {
+
+    Guard new_guard;
+    std::string guard_key;
+
+    if (parse_guard(buffer->content, &new_guard, &guard_key) == -1) {
+        printf("op_install_guard: syntax error\n");
+        send_msg(buffer->process_id, 'x', buffer->operation_type, buffer->content);
+        return;
+    }
+
+    // With guard parsed correctly, we proceed to run the guard on Z3 and evaluate if it conflicts.
+    // If so, return guard key, as well as the process ID and guard key of the conflicting guard.
+    for (unsigned i = 0; i < process_ids.size(); i++) {
+        if (process_ids[i] == process->process_id)
+            continue;
+        Process *process = &(processes[process_ids[i]]);
+        for (unsigned j = 0; j < process->guard_keys.size(); j++) {
+            if (!test_guards(process->guards[process->guard_keys[j]], new_guard)) {
+                std::string to_return = guard_key + " " + std::to_string(process_ids[i]) + process->guard_keys[j];
+                printf("op_install_guard: conflict detected\n");
+                send_msg(buffer->process_id, 'c', buffer->operation_type, buffer->content);
+                return;
+            }
+        }
+    }
+
+    // Update OR install guard
+    try {
+        Guard old_guard = process->guards.at(guard_key);
+    } catch (const std::out_of_range& error) {
+        process->guard_keys.push_back(guard_key);
+    }
+    process->guards[guard_key] = new_guard;
+
+    printf("op_install_guard: okay\n");
+    send_msg(buffer->process_id, 'o', buffer->operation_type, buffer->content);
+
+}
+
+void op_remove_guard(Process *process, MsgBufferIn *buffer) {
+    // TODO
+}
+
+void op_process_bye(MsgBufferIn *buffer) {
+    processes.erase(buffer->process_id);
+    for (unsigned i = 0; i < process_ids.size(); i++) {
+        if (process_ids[i] == buffer->process_id) {
+            process_ids.erase(process_ids.begin() + i);
+        }
+    }
+    printf("op_process_bye: okay\n");
+    send_msg(buffer->process_id, 'o', buffer->operation_type, buffer->content);
+}
+
+void op_approve_permission(Process *process, MsgBufferIn *buffer) {
+    // TODO
+}
+
+void op_deny_permission(Process *process, MsgBufferIn *buffer) {
+    // TODO
+}
+
+void op_list_process_ids(MsgBufferIn *buffer) {
+    std::string process_ids_str_concat = "";
+    for (unsigned i = 0; i < process_ids.size(); i++) {
+        if (i > 0) {
+            process_ids_str_concat += " ";
+        }
+        process_ids_str_concat += std::to_string(process_ids[i]);
+    }
+    printf("op_list_process_ids: okay, view content\n");
+    send_msg(buffer->process_id, 'v', buffer->operation_type, process_ids_str_concat.c_str());
+}
+
+void op_list_guard_keys(MsgBufferIn *buffer) {
+    try {
+        long process_id;
+        try {
+            process_id = std::stol(std::string(buffer->content));
+        } catch (const std::invalid_argument& error) {
+            printf("op_list_guard_keys: syntax error\n");
+            send_msg(buffer->process_id, 'x', buffer->operation_type, buffer->content);
+            return;
+        }
+        Process process = processes.at(process_id);
+        std::string guard_keys_concat = "";
+        for (unsigned i = 0; i < process.guard_keys.size(); i++) {
+            if (i > 0) {
+                guard_keys_concat += " ";
+            }
+            guard_keys_concat += process.guard_keys[i];
+        }
+        printf("op_list_guard_keys: okay, view content\n");
+        send_msg(buffer->process_id, 'v', buffer->operation_type, guard_keys_concat.c_str());
+    } catch (const std::out_of_range& error) {
+        printf("op_list_guard_keys: other error (process ID not found)\n");
+        send_msg(buffer->process_id, 'e', buffer->operation_type, buffer->content);
+    }
+}
+
+void op_get_guard(MsgBufferIn *buffer) {
+    // Content format: pid guard-key
+    // Example: 12345 https
+    bool process_id_error = false;
+    long process_id = -1;
+    std::string guard_key = "";
+    std::string getline_out;
+    std::stringstream content_stream(buffer->content);
+    while (std::getline(content_stream, getline_out, ' ')) {
+        if (process_id == -1) {
+            try {
+                process_id = std::stol(getline_out);
+            } catch (...) {
+                process_id_error = true;
+            }
+        } else {
+            guard_key = getline_out;
+            break;
+        }
+    }
+    if (process_id_error || guard_key.empty()) {
+        printf("op_get_guard: syntax error\n");
+        send_msg(buffer->process_id, 'x', buffer->operation_type, buffer->content);
+        return;
+    }
+    try {
+        Process process = processes.at(process_id);
+        Guard guard = process.guards.at(guard_key);
+        std::string guard_str = guard_to_str(guard, guard_key);
+        send_msg(buffer->process_id, 'v', buffer->operation_type, guard_str.c_str());
+    } catch (const std::out_of_range& error) {
+        printf("op_get_guard: other error (guard not found)\n");
+        send_msg(buffer->process_id, 'e', buffer->operation_type, buffer->content);
+        return;
+    }
 }
 
 void handle_msg(void *buf) {
@@ -327,6 +568,7 @@ void handle_msg(void *buf) {
             Process process;
             process.process_id = buffer->process_id;
             processes[buffer->process_id] = process;
+            process_ids.push_back(buffer->process_id);
             valid_sig = true;
         }
         printf("Signature not enforced\n");
@@ -342,26 +584,38 @@ void handle_msg(void *buf) {
 
     // Match the operation type
     if (buffer->operation_type == 'k') {
-        // Public key exchange
-        strcpy(process->public_key, buffer->content);
-        send_msg(buffer->process_id, 'k', buffer->operation_type, pem_public_key);
+        printf("Public key exchange\n");
+        op_public_key_exchange(process, buffer);
     } else if (buffer->operation_type == 'i') {
-        // Install or update guard
+        printf("Install or update guard\n");
+        op_install_guard(process, buffer);
     } else if (buffer->operation_type == 'r') {
-        // Remove guard
+        printf("Remove guard\n");
+        op_remove_guard(process, buffer);
     } else if (buffer->operation_type == 'b') {
-        // Remove guard and key
+        printf("Remove all of a process's guards and key\n");
+        op_process_bye(buffer);
     } else if (buffer->operation_type == 'a') {
-        // Approve permission
+        printf("Approve permission\n");
+        op_approve_permission(process, buffer);
     } else if (buffer->operation_type == 'd') {
-        // Deny permission
+        printf("Deny permission\n");
+        op_deny_permission(process, buffer);
     } else if (buffer->operation_type == 'l') {
-        // List all process IDs with installed guards
+        printf("List all process IDs with installed guards\n");
+        op_list_process_ids(buffer);
+    } else if (buffer->operation_type == 'n') {
+        printf("List all guard keys for process ID\n");
+        op_list_guard_keys(buffer);
     } else if (buffer->operation_type == 'g') {
-        // Get guard for process ID
+        printf("Get guard for process ID and guard key\n");
+        op_get_guard(buffer);
     } else {
-        perror("Invalid operation type");
+        printf("Invalid operation type\n");
+        send_msg(buffer->process_id, 'x', buffer->operation_type, buffer->content);
     }
+
+    // TODO: Mutex
 
 }
 
