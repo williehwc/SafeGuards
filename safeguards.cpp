@@ -426,9 +426,9 @@ void op_install_guard(Process *process, MsgBufferIn *buffer) {
         Process *process = &(processes[process_ids[i]]);
         for (unsigned j = 0; j < process->guard_keys.size(); j++) {
             if (!test_guards(process->guards[process->guard_keys[j]], new_guard)) {
-                std::string to_return = guard_key + " " + std::to_string(process_ids[i]) + process->guard_keys[j];
+                std::string to_return = guard_key + " " + std::to_string(process_ids[i]) + " " + process->guard_keys[j];
                 printf("op_install_guard: conflict detected\n");
-                send_msg(buffer->process_id, 'c', buffer->operation_type, buffer->content);
+                send_msg(buffer->process_id, 'c', buffer->operation_type, to_return.c_str());
                 return;
             }
         }
@@ -448,21 +448,14 @@ void op_install_guard(Process *process, MsgBufferIn *buffer) {
 }
 
 void op_remove_guard(Process *process, MsgBufferIn *buffer) {
-    Guard new_guard;
-    std::string guard_key;
+    std::string guard_key = std::string(buffer->content);
 
-    if (parse_guard(buffer->content, &new_guard, &guard_key) == -1) {
-        printf("op_install_guard: syntax error\n");
-        send_msg(buffer->process_id, 'x', buffer->operation_type, buffer->content);
-        return;
-    }
-
-    // Update OR install guard
-    // remove guard key
     try {
         Guard old_guard = process->guards.at(guard_key);
     } catch (const std::out_of_range& error) {
-        // guard does not exist so nothing to remove
+        printf("op_remove_guard: other error (guard not found)\n");
+        send_msg(buffer->process_id, 'e', buffer->operation_type, buffer->content);
+        return;
     }
 
     // remove guard from the unordered map guards
@@ -501,6 +494,9 @@ void op_deny_permission(Process *process, MsgBufferIn *buffer) {
 void op_list_process_ids(MsgBufferIn *buffer) {
     std::string process_ids_str_concat = "";
     for (unsigned i = 0; i < process_ids.size(); i++) {
+        if (processes[process_ids[i]].guard_keys.empty()) {
+            continue;
+        }
         if (i > 0) {
             process_ids_str_concat += " ";
         }

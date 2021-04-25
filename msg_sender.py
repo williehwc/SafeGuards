@@ -73,6 +73,23 @@ send_and_receive_message('n', str(PROCESS_ID))
 
 send_and_receive_message('g', str(PROCESS_ID) + " guard1")
 
+# ========= REMOVE GUARDS =========
+
+send_and_receive_message('r', 'guard1')
+send_and_receive_message('r', 'guard2')
+
+# ========= LIST PROCESSES =========
+
+send_and_receive_message('l', '')
+
+# ========= LIST GUARDS =========
+
+send_and_receive_message('n', str(PROCESS_ID))
+
+# ========= GET GUARD =========
+
+send_and_receive_message('g', str(PROCESS_ID) + " guard1")
+
 # ========= BYE =========
 
 send_and_receive_message('b', '')
