@@ -179,7 +179,7 @@ int parse_line(GuardLine* line, char* message, int start, int end)
                 }
             }
             else {
-                if (parse_value(line, parameterCount, message, parameterStart) == -1) {
+                if (parse_value(line, parameterCount - 1, message, parameterStart) == -1) {
                     std::cerr << "Syntax error 08" << std::endl;
                     return -1;
                 }
@@ -188,8 +188,10 @@ int parse_line(GuardLine* line, char* message, int start, int end)
             parameterStart = i+1;
         }
     }
-    while (parameterCount < MAX_PARAMETERS)
-        line->type[parameterCount] = unused;
+    while (parameterCount <= MAX_PARAMETERS) {
+        line->type[parameterCount - 1] = unused;
+        parameterCount++;
+    }
     return 0;
 }
 
