@@ -54,6 +54,7 @@ enum Operators {
    smaller,
    smaller_or_equal,
    cidr_in, //will be implemented with ints and the above
+   guard_if,
 
    // Functions
    plus,

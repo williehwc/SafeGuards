@@ -46,6 +46,7 @@ std::string guard_to_str(Guard guard, std::string guard_key) {
         else if (guard_line->op == smaller_or_equal) guard_str += "<=";
         else if (guard_line->op == smaller) guard_str += "<";
         else if (guard_line->op == cidr_in) guard_str += "IN";
+        else if (guard_line->op == guard_if) guard_str += "IF";
         else if (guard_line->op == bool_and) guard_str += "AND";
         else if (guard_line->op == bool_or) guard_str += "OR";
         else if (guard_line->op == bool_xor) guard_str += "XOR";
@@ -86,6 +87,7 @@ int parse_operation(GuardLine* line, char* message, int start)
     else if (stringEqual(opStart, "<=")) op = smaller_or_equal;
     else if (stringEqual(opStart, "<")) op = smaller;
     else if (stringEqual(opStart, "IN")) op = cidr_in;
+    else if (stringEqual(opStart, "IF")) op = guard_if;
     else if (stringEqual(opStart, "AND")) op = bool_and;
     else if (stringEqual(opStart, "OR")) op = bool_or;
     else if (stringEqual(opStart, "XOR")) op = bool_xor;
@@ -206,7 +208,7 @@ void add_expressions(z3::context& c, Guard& g, std::vector<z3::expr>& exprVec)
         if (gl.type[0] == variable) x = c.int_const(variables[gl.values[0]]);
         if (gl.type[0] == integer) x = c.int_val(gl.values[0]);
 
-                // We process cidr_in separately
+        // We process cidr_in separately
         if (gl.op == cidr_in)
         {
             int y = gl.values[1];
@@ -226,6 +228,19 @@ void add_expressions(z3::context& c, Guard& g, std::vector<z3::expr>& exprVec)
         if (gl.type[1] == expression) y = exprVec[gl.values[1]];
         if (gl.type[1] == variable) y = c.int_const(variables[gl.values[1]]);
         if (gl.type[1] == integer) y = c.int_val(gl.values[1]);
+
+        // We also process if separately
+        if (gl.op == guard_if)
+        {
+            z3::expr z = c.int_val(0);
+            if (gl.type[2] == expression) z = exprVec[gl.values[2]];
+            if (gl.type[2] == variable) z = c.int_const(variables[gl.values[2]]);
+            if (gl.type[2] == integer) z = c.int_val(gl.values[2]);
+
+            z3::expr newExp = z3::ite(x,y,z);
+            exprVec.push_back(newExp);            
+            continue;
+        }
 
         z3::expr newExp = c.int_val(0);
         switch (gl.op)
