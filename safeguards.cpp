@@ -13,6 +13,7 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
+#include <mutex>
 
 #include <iostream>
 
@@ -29,6 +30,9 @@ int queue_id;
 
 std::unordered_map<long, Process> processes;
 std::vector<long> process_ids;
+
+std::mutex op_mtx;
+std::mutex sig_mtx;
 
 std::string guard_to_str(Guard guard, std::string guard_key) {
     std::string guard_str = guard_key;
@@ -58,15 +62,17 @@ std::string guard_to_str(Guard guard, std::string guard_key) {
         else if (guard_line->op == modulus) guard_str += "%";
 
         for (unsigned j = 0; j < MAX_PARAMETERS; j++) {
-            guard_str += " ";
             switch (guard_line->type[j]) {
                 case expression:
+                    guard_str += " ";
                     guard_str += "^" + std::to_string(guard_line->values[j]);
                     break;
                 case variable:
+                    guard_str += " ";
                     guard_str += variables[guard_line->values[j]];
                     break;
                 case integer:
+                    guard_str += " ";
                     guard_str += std::to_string(guard_line->values[j]);
                     break;
             }
@@ -435,15 +441,21 @@ void op_install_guard(Process *process, MsgBufferIn *buffer) {
         return;
     }
 
+    // FIRST CRITICAL SECTION
+    op_mtx.lock();
+    std::vector<long> process_ids_copy = process_ids;
+    std::unordered_map<long, Process> processes_copy = processes;
+    op_mtx.unlock();
+
     // With guard parsed correctly, we proceed to run the guard on Z3 and evaluate if it conflicts.
     // If so, return guard key, as well as the process ID and guard key of the conflicting guard.
-    for (unsigned i = 0; i < process_ids.size(); i++) {
-        if (process_ids[i] == process->process_id)
+    for (unsigned i = 0; i < process_ids_copy.size(); i++) {
+        if (process_ids_copy[i] == process->process_id)
             continue;
-        Process *process = &(processes[process_ids[i]]);
-        for (unsigned j = 0; j < process->guard_keys.size(); j++) {
-            if (!test_guards(process->guards[process->guard_keys[j]], new_guard)) {
-                std::string to_return = guard_key + " " + std::to_string(process_ids[i]) + " " + process->guard_keys[j];
+        Process *pr = &(processes_copy[process_ids_copy[i]]);
+        for (unsigned j = 0; j < pr->guard_keys.size(); j++) {
+            if (!test_guards(pr->guards[pr->guard_keys[j]], new_guard)) {
+                std::string to_return = guard_key + " " + std::to_string(process_ids_copy[i]) + " " + pr->guard_keys[j];
                 printf("op_install_guard: conflict detected\n");
                 send_msg(buffer->process_id, 'c', buffer->operation_type, to_return.c_str());
                 return;
@@ -451,13 +463,37 @@ void op_install_guard(Process *process, MsgBufferIn *buffer) {
         }
     }
 
-    // Update OR install guard
+    // SECOND CRITICAL SECTION
+    op_mtx.lock();
+
+    // Check if there are any new guards, evaluate for conflicts if so
+    for (unsigned i = 0; i < process_ids.size(); i++) {
+        if (process_ids[i] == process->process_id)
+            continue;
+        Process *pr = &(processes[process_ids[i]]);
+        for (unsigned j = 0; j < pr->guard_keys.size(); j++) {
+            if (processes_copy.count(process_ids[i]) == 0 || processes_copy[process_ids[i]].guards.count(guard_key) == 0) {
+                if (!test_guards(pr->guards[pr->guard_keys[j]], new_guard)) {
+                    printf("Evaluating for conflicts, in critical section\n");
+                    std::string to_return = guard_key + " " + std::to_string(process_ids_copy[i]) + " " + pr->guard_keys[j];
+                    printf("op_install_guard: conflict detected\n");
+                    send_msg(buffer->process_id, 'c', buffer->operation_type, to_return.c_str());
+                    op_mtx.unlock();
+                return;
+                }
+            }
+        }
+    }
+
+    // Update or install guard
+    process->guards[guard_key] = new_guard;
     try {
         Guard old_guard = process->guards.at(guard_key);
     } catch (const std::out_of_range& error) {
         process->guard_keys.push_back(guard_key);
     }
-    process->guards[guard_key] = new_guard;
+
+    op_mtx.unlock();
 
     printf("op_install_guard: okay\n");
     send_msg(buffer->process_id, 'o', buffer->operation_type, buffer->content);
@@ -475,8 +511,7 @@ void op_remove_guard(Process *process, MsgBufferIn *buffer) {
         return;
     }
 
-    // remove guard from the unordered map guards
-    process->guards.erase(guard_key);
+    op_mtx.lock();
 
     // remvove guard key from the vector
     for (unsigned j = 0; j < process->guard_keys.size(); j++) {
@@ -485,17 +520,24 @@ void op_remove_guard(Process *process, MsgBufferIn *buffer) {
         }
     }
     
+    // remove guard from the unordered map guards
+    process->guards.erase(guard_key);
+
+    op_mtx.unlock();
+
     printf("op_remove_guard: okay\n");
     send_msg(buffer->process_id, 'o', buffer->operation_type, buffer->content);
 }
 
 void op_process_bye(MsgBufferIn *buffer) {
-    processes.erase(buffer->process_id);
+    op_mtx.lock();
     for (unsigned i = 0; i < process_ids.size(); i++) {
         if (process_ids[i] == buffer->process_id) {
             process_ids.erase(process_ids.begin() + i);
         }
     }
+    processes.erase(buffer->process_id);
+    op_mtx.unlock();
     printf("op_process_bye: okay\n");
     send_msg(buffer->process_id, 'o', buffer->operation_type, buffer->content);
 }
@@ -596,6 +638,7 @@ void handle_msg(void *buf) {
 
     // Verify the signature
     bool valid_sig = false;
+    sig_mtx.lock();
     try {
         Process process = processes.at(buffer->process_id);
         // Signature must be valid per stored key
@@ -614,6 +657,7 @@ void handle_msg(void *buf) {
         }
         printf("Signature not enforced\n");
     }
+    sig_mtx.unlock();
     if (!valid_sig) {
         // Respond with response type 'm'
         printf("Signature fail\n");
