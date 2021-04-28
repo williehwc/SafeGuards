@@ -466,20 +466,29 @@ void op_install_guard(Process *process, MsgBufferIn *buffer) {
     // SECOND CRITICAL SECTION
     op_mtx.lock();
 
+    // Set version number
+    if (process->guards.count(guard_key)) {
+        new_guard.version = process->guards[guard_key].version + 1;
+    } else {
+        new_guard.version = 0;
+    }
+
     // Check if there are any new guards, evaluate for conflicts if so
     for (unsigned i = 0; i < process_ids.size(); i++) {
         if (process_ids[i] == process->process_id)
             continue;
         Process *pr = &(processes[process_ids[i]]);
         for (unsigned j = 0; j < pr->guard_keys.size(); j++) {
-            if (processes_copy.count(process_ids[i]) == 0 || processes_copy[process_ids[i]].guards.count(guard_key) == 0) {
-                if (!test_guards(pr->guards[pr->guard_keys[j]], new_guard)) {
-                    printf("Evaluating for conflicts, in critical section\n");
-                    std::string to_return = guard_key + " " + std::to_string(process_ids_copy[i]) + " " + pr->guard_keys[j];
-                    printf("op_install_guard: conflict detected\n");
-                    send_msg(buffer->process_id, 'c', buffer->operation_type, to_return.c_str());
-                    op_mtx.unlock();
-                return;
+            if (processes_copy.count(process_ids[i]) == 0 ||
+                processes_copy[process_ids[i]].guards.count(pr->guard_keys[j]) == 0 ||
+                processes_copy[process_ids[i]].guards[pr->guard_keys[j]].version < pr->guards[pr->guard_keys[j]].version) {
+                    if (!test_guards(pr->guards[pr->guard_keys[j]], new_guard)) {
+                        printf("Evaluating for conflicts, in critical section!!!!!\n");
+                        std::string to_return = guard_key + " " + std::to_string(process_ids_copy[i]) + " " + pr->guard_keys[j];
+                        printf("op_install_guard: conflict detected\n");
+                        send_msg(buffer->process_id, 'c', buffer->operation_type, to_return.c_str());
+                        op_mtx.unlock();
+                    return;
                 }
             }
         }

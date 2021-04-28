@@ -85,6 +85,7 @@ typedef struct GuardLine {
 typedef struct Guard {
    std::vector<long> permissions;
    std::vector<GuardLine> guard_lines;
+   unsigned version;
 } Guard;
 
 const int variableCount = 35;
