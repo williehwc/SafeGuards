@@ -1,4 +1,4 @@
-#define CONTENT_LEN 2048
+#define CONTENT_LEN 1024
 // #define MAX_GUARD_SIZE 32
 // #define MAX_NUM_PERMISSIONS 32
 // #define MAX_NUM_GUARDS 16
@@ -16,6 +16,7 @@
 typedef struct MsgBufferIn {
    long recipient;
    long process_id;
+   int  request_id;
    char message_sig[SIG_LEN];
    char operation_type;
    char content[CONTENT_LEN];

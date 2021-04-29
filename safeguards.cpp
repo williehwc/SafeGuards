@@ -401,19 +401,20 @@ int parse_guard(char *message, Guard *new_guard, std::string *guard_key) {
 
 }
 
-void send_msg(long recipient, char response_type, char operation_type, const char *content) {
+void send_msg(MsgBufferIn *buffer_in, char response_type, const char *content) {
+    long recipient = buffer_in->process_id * 10000 + buffer_in->request_id;
     printf("Sending to %ld, response type %c, operation type %c\n\"%s\"\n",
         recipient,
         response_type,
-        operation_type,
+        buffer_in->operation_type,
         content);
     MsgBufferOut buffer;
     buffer.recipient = recipient;
     buffer.response_type = response_type;
-    buffer.operation_type = operation_type;
+    buffer.operation_type = buffer_in->operation_type;
     strcpy(buffer.content, content);
     std::string message(1, response_type);
-    message += operation_type;
+    message += buffer_in->operation_type;
     message += content;
     char *signature = signMessage(rsa_key, message);
     strcpy(buffer.response_sig, signature);
@@ -427,7 +428,7 @@ void send_msg(long recipient, char response_type, char operation_type, const cha
 void op_public_key_exchange(Process *process, MsgBufferIn *buffer) {
     strcpy(process->public_key, buffer->content);
     printf("op_public_key_exchange: okay, view content\n");
-    send_msg(buffer->process_id, 'v', buffer->operation_type, pem_public_key);
+    send_msg(buffer, 'v', pem_public_key);
 }
 
 void op_install_guard(Process *process, MsgBufferIn *buffer) {
@@ -437,7 +438,7 @@ void op_install_guard(Process *process, MsgBufferIn *buffer) {
 
     if (parse_guard(buffer->content, &new_guard, &guard_key) == -1) {
         printf("op_install_guard: syntax error\n");
-        send_msg(buffer->process_id, 'x', buffer->operation_type, buffer->content);
+        send_msg(buffer, 'x', buffer->content);
         return;
     }
 
@@ -457,7 +458,7 @@ void op_install_guard(Process *process, MsgBufferIn *buffer) {
             if (!test_guards(pr->guards[pr->guard_keys[j]], new_guard)) {
                 std::string to_return = guard_key + " " + std::to_string(process_ids_copy[i]) + " " + pr->guard_keys[j];
                 printf("op_install_guard: conflict detected\n");
-                send_msg(buffer->process_id, 'c', buffer->operation_type, to_return.c_str());
+                send_msg(buffer, 'c', to_return.c_str());
                 return;
             }
         }
@@ -486,7 +487,7 @@ void op_install_guard(Process *process, MsgBufferIn *buffer) {
                         printf("Evaluating for conflicts, in critical section!!!!!\n");
                         std::string to_return = guard_key + " " + std::to_string(process_ids_copy[i]) + " " + pr->guard_keys[j];
                         printf("op_install_guard: conflict detected\n");
-                        send_msg(buffer->process_id, 'c', buffer->operation_type, to_return.c_str());
+                        send_msg(buffer, 'c', to_return.c_str());
                         op_mtx.unlock();
                     return;
                 }
@@ -505,7 +506,7 @@ void op_install_guard(Process *process, MsgBufferIn *buffer) {
     op_mtx.unlock();
 
     printf("op_install_guard: okay\n");
-    send_msg(buffer->process_id, 'o', buffer->operation_type, buffer->content);
+    send_msg(buffer, 'o', buffer->content);
 
 }
 
@@ -516,7 +517,7 @@ void op_remove_guard(Process *process, MsgBufferIn *buffer) {
         Guard old_guard = process->guards.at(guard_key);
     } catch (const std::out_of_range& error) {
         printf("op_remove_guard: other error (guard not found)\n");
-        send_msg(buffer->process_id, 'e', buffer->operation_type, buffer->content);
+        send_msg(buffer, 'e', buffer->content);
         return;
     }
 
@@ -535,7 +536,7 @@ void op_remove_guard(Process *process, MsgBufferIn *buffer) {
     op_mtx.unlock();
 
     printf("op_remove_guard: okay\n");
-    send_msg(buffer->process_id, 'o', buffer->operation_type, buffer->content);
+    send_msg(buffer, 'o', buffer->content);
 }
 
 void op_process_bye(MsgBufferIn *buffer) {
@@ -548,7 +549,7 @@ void op_process_bye(MsgBufferIn *buffer) {
     processes.erase(buffer->process_id);
     op_mtx.unlock();
     printf("op_process_bye: okay\n");
-    send_msg(buffer->process_id, 'o', buffer->operation_type, buffer->content);
+    send_msg(buffer, 'o', buffer->content);
 }
 
 void op_approve_permission(Process *process, MsgBufferIn *buffer) {
@@ -571,7 +572,7 @@ void op_list_process_ids(MsgBufferIn *buffer) {
         process_ids_str_concat += std::to_string(process_ids[i]);
     }
     printf("op_list_process_ids: okay, view content\n");
-    send_msg(buffer->process_id, 'v', buffer->operation_type, process_ids_str_concat.c_str());
+    send_msg(buffer, 'v', process_ids_str_concat.c_str());
 }
 
 void op_list_guard_keys(MsgBufferIn *buffer) {
@@ -581,7 +582,7 @@ void op_list_guard_keys(MsgBufferIn *buffer) {
             process_id = std::stol(std::string(buffer->content));
         } catch (const std::invalid_argument& error) {
             printf("op_list_guard_keys: syntax error\n");
-            send_msg(buffer->process_id, 'x', buffer->operation_type, buffer->content);
+            send_msg(buffer, 'x', buffer->content);
             return;
         }
         Process process = processes.at(process_id);
@@ -593,10 +594,10 @@ void op_list_guard_keys(MsgBufferIn *buffer) {
             guard_keys_concat += process.guard_keys[i];
         }
         printf("op_list_guard_keys: okay, view content\n");
-        send_msg(buffer->process_id, 'v', buffer->operation_type, guard_keys_concat.c_str());
+        send_msg(buffer, 'v', guard_keys_concat.c_str());
     } catch (const std::out_of_range& error) {
         printf("op_list_guard_keys: other error (process ID not found)\n");
-        send_msg(buffer->process_id, 'e', buffer->operation_type, buffer->content);
+        send_msg(buffer, 'e', buffer->content);
     }
 }
 
@@ -622,17 +623,17 @@ void op_get_guard(MsgBufferIn *buffer) {
     }
     if (process_id_error || guard_key.empty()) {
         printf("op_get_guard: syntax error\n");
-        send_msg(buffer->process_id, 'x', buffer->operation_type, buffer->content);
+        send_msg(buffer, 'x', buffer->content);
         return;
     }
     try {
         Process process = processes.at(process_id);
         Guard guard = process.guards.at(guard_key);
         std::string guard_str = guard_to_str(guard, guard_key);
-        send_msg(buffer->process_id, 'v', buffer->operation_type, guard_str.c_str());
+        send_msg(buffer, 'v', guard_str.c_str());
     } catch (const std::out_of_range& error) {
         printf("op_get_guard: other error (guard not found)\n");
-        send_msg(buffer->process_id, 'e', buffer->operation_type, buffer->content);
+        send_msg(buffer, 'e', buffer->content);
         return;
     }
 }
@@ -640,10 +641,17 @@ void op_get_guard(MsgBufferIn *buffer) {
 void handle_msg(void *buf) {
 
     MsgBufferIn *buffer = (MsgBufferIn*)buf;
-    printf("Received from %ld, operation type %c\n\"%s\"\n",
+    printf("Received from %ld, request ID %d, operation type %c\n\"%s\"\n",
         buffer->process_id,
+        buffer->request_id,
         buffer->operation_type,
         buffer->content);
+
+    // Check request ID; ignore message if out of range
+    if (buffer->request_id < 0 || buffer->request_id > 9999) {
+        printf("Request ID is out of range; message ignored");
+        return;
+    }
 
     // Verify the signature
     bool valid_sig = false;
@@ -670,7 +678,7 @@ void handle_msg(void *buf) {
     if (!valid_sig) {
         // Respond with response type 'm'
         printf("Signature fail\n");
-        send_msg(buffer->process_id, 'm', buffer->operation_type, buffer->content);
+        send_msg(buffer, 'm', buffer->content);
         return;
     }
 
@@ -706,7 +714,7 @@ void handle_msg(void *buf) {
         op_get_guard(buffer);
     } else {
         printf("Invalid operation type\n");
-        send_msg(buffer->process_id, 'x', buffer->operation_type, buffer->content);
+        send_msg(buffer, 'x', buffer->content);
     }
 
     // TODO: Mutex

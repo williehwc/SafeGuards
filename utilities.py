@@ -21,7 +21,7 @@ crypto.signMessageC.restype = ctypes.c_char_p
 
 PERMISSIONS = 438 # i.e., 0666
 
-CONTENT_LEN = 2048
+CONTENT_LEN = 1024
 SIG_LEN = 512
 
 def generate_key_pair():
@@ -48,6 +48,7 @@ class MsgBufferIn(MsgBuffer):
     _fields_ = [
         ('recipient', ctypes.c_long),
         ('process_id', ctypes.c_long),
+        ('request_id', ctypes.c_int),
         ('message_sig', ctypes.c_byte*SIG_LEN),
         ('operation_type', ctypes.c_byte),
         ('content', ctypes.c_byte*CONTENT_LEN),

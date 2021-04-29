@@ -12,7 +12,7 @@ queue = Msgq(QUEUE_KEY)
 
 # Functions
 
-def send_and_receive_message(operation_type, content):
+def send_and_receive_message(operation_type, content, request_id):
 
     global public_key_safeguards
 
@@ -21,6 +21,7 @@ def send_and_receive_message(operation_type, content):
     buffer = MsgBufferIn()
     buffer.recipient = 1
     buffer.process_id = PROCESS_ID
+    buffer.request_id = request_id
     buffer.set_operation_type(operation_type)
     buffer.set_content(content)
 
@@ -33,7 +34,7 @@ def send_and_receive_message(operation_type, content):
     # Receive message
 
     buffer = MsgBufferOut()
-    queue.recv(buffer, msg_type=PROCESS_ID)
+    queue.recv(buffer, msg_type=PROCESS_ID * 10000 + request_id)
     print("Received", buffer.get_content_readable())
 
     if public_key_safeguards is None:
@@ -44,52 +45,52 @@ def send_and_receive_message(operation_type, content):
 
 # Note: SafeGuards will not verify signature
 
-send_and_receive_message('k', public_key)
+send_and_receive_message('k', public_key, 0)
 
 # ========= INSTALL A GUARD =========
 
 guard = "guard1 123\n+ 500 700\n> tcp.src_port ^0"
-send_and_receive_message('i', guard)
+send_and_receive_message('i', guard, 1)
 
 # ========= INSTALL ANOTHER GUARD =========
 
 guard = "guard2\n- 300 100\n<= tcp.src_port ^0"
-send_and_receive_message('i', guard)
+send_and_receive_message('i', guard, 2)
 
 # ========= UPDATE FIRST GUARD =========
 
 guard = "guard1 123\n+ 400 900\n= tcp.src_port ^0"
-send_and_receive_message('i', guard)
+send_and_receive_message('i', guard, 3)
 
 # ========= LIST PROCESSES =========
 
-send_and_receive_message('l', '')
+send_and_receive_message('l', '', 4)
 
 # ========= LIST GUARDS =========
 
-send_and_receive_message('n', str(PROCESS_ID))
+send_and_receive_message('n', str(PROCESS_ID), 5)
 
 # ========= GET GUARD =========
 
-send_and_receive_message('g', str(PROCESS_ID) + " guard1")
+send_and_receive_message('g', str(PROCESS_ID) + " guard1", 6)
 
 # ========= REMOVE GUARDS =========
 
-send_and_receive_message('r', 'guard1')
-send_and_receive_message('r', 'guard2')
+send_and_receive_message('r', 'guard1', 7)
+send_and_receive_message('r', 'guard2', 8)
 
 # ========= LIST PROCESSES =========
 
-send_and_receive_message('l', '')
+send_and_receive_message('l', '', 9)
 
 # ========= LIST GUARDS =========
 
-send_and_receive_message('n', str(PROCESS_ID))
+send_and_receive_message('n', str(PROCESS_ID), 10)
 
 # ========= GET GUARD =========
 
-send_and_receive_message('g', str(PROCESS_ID) + " guard1")
+send_and_receive_message('g', str(PROCESS_ID) + " guard1", 11)
 
 # ========= BYE =========
 
-send_and_receive_message('b', '')
+send_and_receive_message('b', '', 12)
