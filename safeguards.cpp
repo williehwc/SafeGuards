@@ -497,9 +497,7 @@ void op_install_guard(Process *process, MsgBufferIn *buffer) {
 
     // Update or install guard
     process->guards[guard_key] = new_guard;
-    try {
-        Guard old_guard = process->guards.at(guard_key);
-    } catch (const std::out_of_range& error) {
+    if (new_guard.version == 0) {
         process->guard_keys.push_back(guard_key);
     }
 
