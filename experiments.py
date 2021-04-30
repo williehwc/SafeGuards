@@ -55,8 +55,8 @@ for process in range(numProcesses):
     for guardNum in range(numGuards):
         request_id += 1
         # HARDCODED same guard for every process but but no conflict detected
-        lowerBound = str(process * numGuards + guardNum)
-        upperBound = str(process * numGuards + guardNum + 1)
+        lowerBound = str(0) #str(process * numGuards + guardNum)
+        upperBound = str(1) #str(process * numGuards + guardNum + 1)
         #guard = "guard1 123\n+ 500 700\n> tcp.src_port ^0"
         guard = "guard" + str(guardNum + 1) +" 123\n"
         guard += "< " + lowerBound + " tcp.src_port\n"
