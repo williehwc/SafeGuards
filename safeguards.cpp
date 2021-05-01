@@ -20,6 +20,8 @@
 #include "z3++.h"
 
 #include "safeguards.hpp"
+#include <chrono>
+using namespace std::chrono;
 
 int numGuardsInstalled = 0;
 
@@ -432,6 +434,7 @@ void op_public_key_exchange(Process *process, MsgBufferIn *buffer) {
 }
 
 void op_install_guard(Process *process, MsgBufferIn *buffer) {
+    auto start = high_resolution_clock::now();
 
     Guard new_guard;
     std::string guard_key;
@@ -504,8 +507,20 @@ void op_install_guard(Process *process, MsgBufferIn *buffer) {
     op_mtx.unlock();
 
     printf("op_install_guard: okay\n");
-    send_msg(buffer, 'o', buffer->content);
-
+    auto stop = high_resolution_clock::now();
+    auto duration = duration_cast<microseconds>(stop - start);
+    std::cout << "Time taken by function: "
+         << duration.count() << " microseconds" << std::endl;
+    std::string s = std::to_string(duration.count());
+    char const *array2 = s.c_str();
+    char * newArray = new char[strlen(buffer->content)+strlen(array2)+1];
+    strcpy(newArray,buffer->content);
+    strcat(newArray,array2);
+    /*for(int i - 0 ; i < strlen(newArray) ; i ++ ){
+      cout << "newArrray[i]" ;//Looping 5 times to print out [0],[1],[2],[3],[4]
+    }*/
+    //send_msg(buffer, 'o', buffer->content);
+    send_msg(buffer, 'o', newArray);
 }
 
 void op_remove_guard(Process *process, MsgBufferIn *buffer) {
