@@ -1,0 +1,34 @@
+The public key is b'-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvdoxw8BN4N6BYUsK1y7X\nddDvP0IBs5DRQk/j+7vaSf2X7eCRjipQI/yFdrGBKLOBMgsoMEB5QNYfkqlUpWQ0\nTF9Q27xM1rt9ctiU3HbozZ0+DxkJ4y7H8xw8auPwTLXYEq7qTeMGl7M3etmp64Zx\n5ZlSs7zH8kZZHQOJaZXpBbRPHYdGIg3L5QdQKWAqlpMm7acUSXhr4pEKCURicNZf\nrH4JkcubYUoBmOZKyUHL2dttHENnSJpOXWmdbsRu0O+MaEoa6dNVGnRkgpbutkgx\n62PI+7n0NY0hgfYynEfKNPEEec5ZSBYIBJgB9RgHfrCOElF3mqEV4l68nD2RWftX\nfQIDAQAB\n-----END PUBLIC KEY-----\n'
+Self-verification: True
+Message sent
+Received b'-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsZy1hC0TxCMvkLnlGZH8\n1WvOyqWCLq4IABktOY9TE1nuUSZFFLgi7Lxh8MIU+AZwLFGonP37jfEzh4W7H8eb\n8flzEutQIeWmlpDsHYZ4JrSEf0X8gFKV7YajTtpOVJubYCudNRJ7DqP2aILHTKvR\nZDLmKSXlrS7HNdT7Oz+QrtD4uPwwdENVe5Vu07GEgloVuTq73Bsx1CCoZM6eovRO\nvYns3sn3f75eru2+sRiAxlPxpae4lYn16oU7dnUJUic2S0qWn6pbCRKbGiOB36H0\nz2EK2KLvbc8og8S74b6NBWMqwDHl3lQjFq50abkS8mOtl+W+3+FAOLfc8HMJSnTV\ncQIDAQAB\n-----END PUBLIC KEY-----\n'
+Verification: True
+Self-verification: True
+Message sent
+Received b'guard1 123\n< 0 tcp.src_port\n> 2 tcp.src_port\nAND ^0 ^1'
+Verification: True
+Self-verification: True
+Message sent
+Received b'-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsZy1hC0TxCMvkLnlGZH8\n1WvOyqWCLq4IABktOY9TE1nuUSZFFLgi7Lxh8MIU+AZwLFGonP37jfEzh4W7H8eb\n8flzEutQIeWmlpDsHYZ4JrSEf0X8gFKV7YajTtpOVJubYCudNRJ7DqP2aILHTKvR\nZDLmKSXlrS7HNdT7Oz+QrtD4uPwwdENVe5Vu07GEgloVuTq73Bsx1CCoZM6eovRO\nvYns3sn3f75eru2+sRiAxlPxpae4lYn16oU7dnUJUic2S0qWn6pbCRKbGiOB36H0\nz2EK2KLvbc8og8S74b6NBWMqwDHl3lQjFq50abkS8mOtl+W+3+FAOLfc8HMJSnTV\ncQIDAQAB\n-----END PUBLIC KEY-----\n'
+Verification: True
+Self-verification: True
+Message sent
+Received b'guard1 123\n< 2 tcp.src_port\n> 4 tcp.src_port\nAND ^0 ^1'
+Verification: True
+Self-verification: True
+Message sent
+Received b'-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsZy1hC0TxCMvkLnlGZH8\n1WvOyqWCLq4IABktOY9TE1nuUSZFFLgi7Lxh8MIU+AZwLFGonP37jfEzh4W7H8eb\n8flzEutQIeWmlpDsHYZ4JrSEf0X8gFKV7YajTtpOVJubYCudNRJ7DqP2aILHTKvR\nZDLmKSXlrS7HNdT7Oz+QrtD4uPwwdENVe5Vu07GEgloVuTq73Bsx1CCoZM6eovRO\nvYns3sn3f75eru2+sRiAxlPxpae4lYn16oU7dnUJUic2S0qWn6pbCRKbGiOB36H0\nz2EK2KLvbc8og8S74b6NBWMqwDHl3lQjFq50abkS8mOtl+W+3+FAOLfc8HMJSnTV\ncQIDAQAB\n-----END PUBLIC KEY-----\n'
+Verification: True
+Self-verification: True
+Message sent
+Received b'guard1'
+Verification: True
+Self-verification: True
+Message sent
+Received b'-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsZy1hC0TxCMvkLnlGZH8\n1WvOyqWCLq4IABktOY9TE1nuUSZFFLgi7Lxh8MIU+AZwLFGonP37jfEzh4W7H8eb\n8flzEutQIeWmlpDsHYZ4JrSEf0X8gFKV7YajTtpOVJubYCudNRJ7DqP2aILHTKvR\nZDLmKSXlrS7HNdT7Oz+QrtD4uPwwdENVe5Vu07GEgloVuTq73Bsx1CCoZM6eovRO\nvYns3sn3f75eru2+sRiAxlPxpae4lYn16oU7dnUJUic2S0qWn6pbCRKbGiOB36H0\nz2EK2KLvbc8og8S74b6NBWMqwDHl3lQjFq50abkS8mOtl+W+3+FAOLfc8HMJSnTV\ncQIDAQAB\n-----END PUBLIC KEY-----\n'
+Verification: True
+Self-verification: True
+Message sent
+Received b'guard1'
+Verification: True
+Num Processes:2, Num Guards:1 Overall Time:0.020529985427856445Last Request ID: 8
