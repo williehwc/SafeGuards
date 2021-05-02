@@ -149,7 +149,7 @@ void Base64Encode( const unsigned char* buffer,
   BIO_free_all(bio);
 
   *base64Text=(*bufferPtr).data;
-  // (*base64Text)[(*bufferPtr).length] = '\0';
+  (*base64Text)[(*bufferPtr).length] = '\0';
 }
 
 char* signMessage(RSA *rsa_key, std::string plainText) {
