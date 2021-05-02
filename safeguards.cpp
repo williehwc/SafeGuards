@@ -487,7 +487,7 @@ void op_install_guard(Process *process, MsgBufferIn *buffer) {
                 processes_copy[process_ids[i]].guards.count(pr->guard_keys[j]) == 0 ||
                 processes_copy[process_ids[i]].guards[pr->guard_keys[j]].version < pr->guards[pr->guard_keys[j]].version) {
                     if (!test_guards(pr->guards[pr->guard_keys[j]], new_guard)) {
-                        printf("Evaluating for conflicts, in critical section!!!!!\n");
+                        //printf("Evaluating for conflicts, in critical section!!!!!\n");
                         std::string to_return = guard_key + " " + std::to_string(process_ids_copy[i]) + " " + pr->guard_keys[j];
                         printf("op_install_guard: conflict detected\n");
                         send_msg(buffer, 'c', to_return.c_str());
@@ -505,13 +505,12 @@ void op_install_guard(Process *process, MsgBufferIn *buffer) {
     }
 
     op_mtx.unlock();
-
-    printf("op_install_guard: okay\n");
     auto stop = high_resolution_clock::now();
+    printf("op_install_guard: okay\n");
     auto duration = duration_cast<microseconds>(stop - start);
     std::cout << "Time taken by function: "
          << duration.count() << " microseconds" << std::endl;
-    std::string s = std::to_string(duration.count());
+    std::string s = "\nmicroseconds: " + std::to_string(duration.count());
     char const *array2 = s.c_str();
     char * newArray = new char[strlen(buffer->content)+strlen(array2)+1];
     strcpy(newArray,buffer->content);
@@ -520,6 +519,7 @@ void op_install_guard(Process *process, MsgBufferIn *buffer) {
       cout << "newArrray[i]" ;//Looping 5 times to print out [0],[1],[2],[3],[4]
     }*/
     //send_msg(buffer, 'o', buffer->content);
+    std::cout << buffer->content << std::endl;
     send_msg(buffer, 'o', newArray);
 }
 
