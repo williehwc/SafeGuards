@@ -37,11 +37,25 @@ def send_and_receive_message(operation_type, content, request_id, pid):
 
     buffer = MsgBufferOut()
     queue.recv(buffer, msg_type=pid * 10000 + request_id)
-    #print("Received", buffer.get_content_readable())
+    print("Received", buffer.get_content_readable())
 
+    
     if public_key_safeguards is None:
         public_key_safeguards = buffer.content
     #print("Verification:", buffer.verify_signature(public_key_safeguards))
+    
+    numSeconds = 0
+
+    if operation_type == "i":
+        message = str(buffer.get_content_readable())
+
+        secondsIndex = message.find("microseconds")
+
+        secondsArray = message[secondsIndex:].split(":")
+
+        numSeconds = int("".join(filter(str.isdigit, secondsArray[1])))
+    
+    return numSeconds
 
 # processes
 numProcesses = int(sys.argv[1])
@@ -66,24 +80,21 @@ for process in range(numProcesses):
         guard += "< " + lowerBound + " tcp.src_port\n"
         guard += "> " + upperBound + " tcp.src_port\n"
         guard += "AND ^0 ^1"
-        start = time.time()
-        send_and_receive_message('i', guard, request_id, process + 1)
+        guardTime = send_and_receive_message('i', guard, request_id, process + 1)
         request_id += 1
-        end = time.time()
-        guardTime = end - start
+        print(guardTime)
         processTime += guardTime
     # done with processTime
     overallTime += processTime
 
 for process in range(numProcesses):
-    send_and_receive_message('k', public_key, 0, process + 1)
     request_id += 1
     for guardNum in range(numGuards):
         send_and_receive_message('r', 'guard' + str(guardNum + 1), request_id, process + 1)
         request_id += 1
 
-print("Num Processes:" + str(numProcesses) + ", Num Guards:" + str(numGuards)
- + " Overall Time:"  + str(overallTime) +  "Last Request ID: " + str(request_id))
+#print("Num Processes:" + str(numProcesses) + ", Num Guards:" + str(numGuards)
+ #+ " Overall Time:"  + str(overallTime) +  "Last Request ID: " + str(request_id))
 
 sys.stdout.flush()
 # one guard per process
