@@ -85,7 +85,9 @@ typedef struct GuardLine {
 
 typedef struct Guard {
    std::vector<long> permissions;
+   std::vector<long> permissions_pending;
    std::vector<GuardLine> guard_lines;
+   std::unordered_map<std::string, unsigned> validated_guard_versions;
    unsigned version;
 } Guard;
 

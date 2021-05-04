@@ -2,7 +2,7 @@ from utilities import Msgq, MsgBufferIn, MsgBufferOut, generate_key_pair
 import ctypes
 
 QUEUE_KEY = 108
-PROCESS_ID = 33 # os.getpid()
+PROCESS_ID = 55 # os.getpid()
 
 # Generate key pair
 
@@ -49,7 +49,7 @@ send_and_receive_message('k', public_key, 0)
 
 # ========= INSTALL A GUARD =========
 
-guard = "guard1\n> tcp.src_port 10\n< tcp.dst_port 5\nOR ^0 ^1"
+guard = "guard3\n> tcp.dst_port 10\n< tcp.src_port 5\nOR ^0 ^1"
 send_and_receive_message('i', guard, 1)
 
 # ========= INSTALL ANOTHER GUARD =========
@@ -64,15 +64,15 @@ send_and_receive_message('i', guard, 1)
 
 # ========= LIST PROCESSES =========
 
-# send_and_receive_message('l', '', 4)
+send_and_receive_message('l', '', 4)
 
 # ========= LIST GUARDS =========
 
-# send_and_receive_message('n', str(PROCESS_ID), 5)
+send_and_receive_message('n', str(33), 5)
 
 # ========= GET GUARD =========
 
-# send_and_receive_message('g', str(PROCESS_ID) + " guard1", 6)
+send_and_receive_message('g', str(PROCESS_ID) + " guard3", 6)
 
 # ========= REMOVE GUARDS =========
 
@@ -93,4 +93,4 @@ send_and_receive_message('i', guard, 1)
 
 # ========= BYE =========
 
-# send_and_receive_message('b', '', 12)
+send_and_receive_message('b', '', 12)
