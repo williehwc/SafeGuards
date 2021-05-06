@@ -70,7 +70,9 @@ overallTime = 0
 
 variables = "tcp.src_port\ntcp.dst_port\ntcp.seq_num\ntcp.ack_num\nip6.src_hi\nip6.src_lo\nip6.dst_hi\nip6.dst_lo\nudp.sport\nudp.dport"
 
-variables = ["tcp.src_port", "tcp.dst_port", "tcp.seq_num", "tcp.ack_num", "ip6.src_hi", "ip6.src_lo", "ip6.dst_hi", "ip6.dst_lo", "udp.sport", "udp.dport"]
+#variables = ["tcp.src_port", "tcp.dst_port", "tcp.seq_num", "tcp.ack_num", "ip6.src_hi", "ip6.src_lo", "ip6.dst_hi", "ip6.dst_lo", "udp.sport", "udp.dport"]
+
+variables = ["tcp.src_port", "tcp.dst_port", "tcp.seq_num", "tcp.ack_num"]
 for process in range(numProcesses):
     #processTime = 0
     send_and_receive_message('k', public_key, request_id, process + 1)
@@ -92,7 +94,10 @@ for process in range(numProcesses):
         guard += "AND ^" + str(baseNum) + " ^" + str(baseNum + 1) + "\n"
         baseNum = baseNum + 2
         while baseNum < len(variables) * 3:
-            guard += "AND ^" + str(currentNum) + " ^" + str(baseNum) + "\n"
+            if baseNum == len(variables) * 3 - 1:
+                guard += "AND ^" + str(currentNum) + " ^" + str(baseNum)
+            else:
+                guard += "AND ^" + str(currentNum) + " ^" + str(baseNum) + "\n"
             currentNum += 1
             baseNum += 1
         guardTime = send_and_receive_message('i', guard, request_id, process + 1)
