@@ -211,11 +211,11 @@ void add_expressions(z3::context& c, Guard& g, std::vector<z3::expr>& exprVec)
     for (int i = 0; i < g.guard_lines.size(); i++)
     {
         GuardLine gl = g.guard_lines[i];
-        z3::expr x = c.int_val(0);
+        z3::expr x = c.bv_val(0,32);
 
         if (gl.type[0] == expression) x = exprVec[gl.values[0]];
-        if (gl.type[0] == variable) x = c.int_const(variables[gl.values[0]]);
-        if (gl.type[0] == integer) x = c.int_val(gl.values[0]);
+        if (gl.type[0] == variable) x = c.bv_const(variables[gl.values[0]],32);
+        if (gl.type[0] == integer) x = c.bv_val(gl.values[0],32);
 
         // We process cidr_in separately
         if (gl.op == cidr_in)
@@ -233,25 +233,25 @@ void add_expressions(z3::context& c, Guard& g, std::vector<z3::expr>& exprVec)
             continue;
         }
 
-        z3::expr y = c.int_val(0);
+        z3::expr y = c.bv_val(0,32);
         if (gl.type[1] == expression) y = exprVec[gl.values[1]];
-        if (gl.type[1] == variable) y = c.int_const(variables[gl.values[1]]);
-        if (gl.type[1] == integer) y = c.int_val(gl.values[1]);
+        if (gl.type[1] == variable) y = c.bv_const(variables[gl.values[1]],32);
+        if (gl.type[1] == integer) y = c.bv_val(gl.values[1],32);
 
         // We also process if separately
         if (gl.op == guard_if)
         {
-            z3::expr z = c.int_val(0);
+            z3::expr z = c.bv_val(0,32);
             if (gl.type[2] == expression) z = exprVec[gl.values[2]];
-            if (gl.type[2] == variable) z = c.int_const(variables[gl.values[2]]);
-            if (gl.type[2] == integer) z = c.int_val(gl.values[2]);
+            if (gl.type[2] == variable) z = c.bv_const(variables[gl.values[2]],32);
+            if (gl.type[2] == integer) z = c.bv_val(gl.values[2],32);
 
             z3::expr newExp = z3::ite(x,y,z);
             exprVec.push_back(newExp);            
             continue;
         }
 
-        z3::expr newExp = c.int_val(0);
+        z3::expr newExp = c.bv_val(0,32);
         switch (gl.op)
         {
             case bool_and:
