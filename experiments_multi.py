@@ -1,3 +1,10 @@
+#!/usr/bin/env python
+
+#-----------------------------------------------------------------------
+# spawning.py
+# Author: Bob Dondero
+#-----------------------------------------------------------------------
+
 from threading import Thread
 from utilities import Msgq, MsgBufferIn, MsgBufferOut, generate_key_pair
 import ctypes
@@ -57,9 +64,10 @@ def send_and_receive_message(operation_type, content, request_id, pid):
 
 class PrinterThread (Thread):
     
-    def __init__(self, numProcesses, numGuards, request_id):
+    def __init__(self, start, end, numGuards, request_id):
         Thread.__init__(self)
-        self._numProcesses = numProcesses
+        self._start = start
+        self._end = end
         self._numGuards = numGuards
         self._request_id = request_id
 
@@ -69,7 +77,9 @@ class PrinterThread (Thread):
             print(self._color)
         print(self._color + ' thread terminated')'''
          # processes
-        numProcesses = self._numProcesses
+        start = self.start
+
+        end = self.end
 
         # multiple guards per processs
         numGuards = self._numGuards
@@ -79,7 +89,8 @@ class PrinterThread (Thread):
         # one variable
         overallTime = 0
 
-        for process in range(numProcesses):
+        # change to set by thread
+        for process in range(start, end):
             processTime = 0
             send_and_receive_message('k', public_key, request_id, process + 1)
             request_id += 1
@@ -96,22 +107,22 @@ class PrinterThread (Thread):
                 print(guardTime)
                 overallTime += guardTime
 
-        for process in range(numProcesses):
+        '''for process in range(numProcesses):
             request_id += 1
             for guardNum in range(numGuards):
                 send_and_receive_message('r', 'guard' + str(guardNum + 1), request_id, process + 1)
-                request_id += 1
+                request_id += 1'''
 
         overallTime = overallTime / 1000000
-        print("Num Processes:" + str(numProcesses) + ", Num Guards:" + str(numGuards)
+        print("Start:" + str(start) + ", Num Guards:" + str(numGuards)
         + " Overall Time:"  + str(overallTime) +  "Last Request ID: " + str(request_id))
         
 #-----------------------------------------------------------------------
 
 def main():
     
-    blueThread = PrinterThread(1, 1, 0)
-    redThread = PrinterThread(1, 1, 5)
+    blueThread = PrinterThread(0, 1, 1, 0)
+    redThread = PrinterThread(1, 2, 1, 5)
     
     blueThread.start()
     redThread.start()
