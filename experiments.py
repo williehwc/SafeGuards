@@ -76,7 +76,7 @@ for process in range(numProcesses):
         lowerBound = str(process * numGuards * 2 + guardNum * 2)
         upperBound = str(process * numGuards * 2 + guardNum * 2 + 2)
         #guard = "guard1 123\n+ 500 700\n> tcp.src_port ^0"
-        guard = "guard" + str(guardNum + 1) +" 123\n"
+        guard = "guard" + str(guardNum + 1) + "\n"
         guard += "< " + lowerBound + " tcp.src_port\n"
         guard += "> " + upperBound + " tcp.src_port\n"
         guard += "AND ^0 ^1"
