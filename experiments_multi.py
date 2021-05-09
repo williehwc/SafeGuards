@@ -114,8 +114,10 @@ class PrinterThread (Thread):
 
 def main():
     
+    # process 1 and 2
     blueThread = PrinterThread(0, 2, 1, 0)
-    redThread = PrinterThread(3, 5, 1, 100)
+    # process 3 and 4
+    redThread = PrinterThread(2, 4, 1, 20)
     
     blueThread.start()
     redThread.start()
