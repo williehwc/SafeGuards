@@ -21,6 +21,10 @@
 
 #include "safeguards.hpp"
 #include <chrono>
+
+#include <sys/time.h>
+#include <time.h>
+#include <math.h>
 using namespace std::chrono;
 
 int numGuardsInstalled = 0;
@@ -482,6 +486,24 @@ void op_public_key_exchange(Process *process, MsgBufferIn *buffer) {
 
 void op_install_guard(Process *process, MsgBufferIn *buffer) {
     auto start = high_resolution_clock::now();
+    
+    char start_buffer[26];
+    int millisec;
+    struct tm* tm_info;
+    struct timeval tv;
+
+    gettimeofday(&tv, NULL);
+
+    millisec = lrint(tv.tv_usec/1000.0); // Round to nearest millisec
+    if (millisec>=1000) { // Allow for rounding up to nearest second
+        millisec -=1000;
+        tv.tv_sec++;
+    }
+
+    tm_info = localtime(&tv.tv_sec);
+
+    strftime(start_buffer, 26, "%Y:%m:%d %H:%M:%S", tm_info);
+    printf("Start: %s.%03d\n", start_buffer, millisec);
 
     Guard new_guard;
     std::string guard_key;
@@ -579,6 +601,25 @@ void op_install_guard(Process *process, MsgBufferIn *buffer) {
     std::cout << "Time taken by function: "
          << duration.count() << " microseconds" << std::endl;
     std::string s = "\nmicroseconds: " + std::to_string(duration.count());
+
+    char stop_buffer[26];
+    int stop_millisec;
+    struct tm* stop_tm_info;
+    struct timeval stop_tv;
+
+    gettimeofday(&stop_tv, NULL);
+
+    stop_millisec = lrint(stop_tv.tv_usec/1000.0); // Round to nearest millisec
+    if (stop_millisec>=1000) { // Allow for rounding up to nearest second
+        stop_millisec -=1000;
+        stop_tv.tv_sec++;
+    }
+
+    stop_tm_info = localtime(&stop_tv.tv_sec);
+
+    strftime(stop_buffer, 26, "%Y:%m:%d %H:%M:%S", stop_tm_info);
+    printf("Stop: %s.%03d\n", stop_buffer, stop_millisec);
+
     char const *array2 = s.c_str();
     char * newArray = new char[strlen(buffer->content)+strlen(array2)+1];
     strcpy(newArray,buffer->content);
