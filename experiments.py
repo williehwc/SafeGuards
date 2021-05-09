@@ -83,9 +83,8 @@ for process in range(numProcesses):
         guardTime = send_and_receive_message('i', guard, request_id, process + 1)
         request_id += 1
         print(guardTime)
-        processTime += guardTime
+        overallTime += guardTime
     # done with processTime
-    overallTime += processTime
 
 for process in range(numProcesses):
     request_id += 1
@@ -93,8 +92,8 @@ for process in range(numProcesses):
         send_and_receive_message('r', 'guard' + str(guardNum + 1), request_id, process + 1)
         request_id += 1
 
-#print("Num Processes:" + str(numProcesses) + ", Num Guards:" + str(numGuards)
- #+ " Overall Time:"  + str(overallTime) +  "Last Request ID: " + str(request_id))
+print("Num Processes:" + str(numProcesses) + ", Num Guards:" + str(numGuards)
++ " Overall Time:"  + str(overallTime) +  "Last Request ID: " + str(request_id))
 
 sys.stdout.flush()
 # one guard per process
