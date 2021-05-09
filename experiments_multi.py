@@ -55,7 +55,7 @@ def send_and_receive_message(operation_type, content, request_id, pid):
     
     return numSeconds
 
-class PrinterThread (Thread):
+class SafeGuardsThread (Thread):
     
     def __init__(self, start, end, numGuards, request_id):
         Thread.__init__(self)
@@ -115,12 +115,12 @@ class PrinterThread (Thread):
 def main():
     
     # process 1 and 2
-    blueThread = PrinterThread(0, 2, 1, 0)
+    firstThread = SafeGuardsThread(0, 2, 1, 0)
     # process 3 and 4
-    redThread = PrinterThread(2, 4, 1, 20)
+    secondThread = SafeGuardsThread(2, 4, 1, 20)
     
-    blueThread.start()
-    redThread.start()
+    firstThread.start()
+    secondThread.start()
     
     print('main thread terminated')
 
