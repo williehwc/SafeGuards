@@ -1,10 +1,3 @@
-#!/usr/bin/env python
-
-#-----------------------------------------------------------------------
-# spawning.py
-# Author: Bob Dondero
-#-----------------------------------------------------------------------
-
 from threading import Thread
 from utilities import Msgq, MsgBufferIn, MsgBufferOut, generate_key_pair
 import ctypes
@@ -77,9 +70,9 @@ class PrinterThread (Thread):
             print(self._color)
         print(self._color + ' thread terminated')'''
          # processes
-        start = self.start
+        start = self._start
 
-        end = self.end
+        end = self._end
 
         # multiple guards per processs
         numGuards = self._numGuards
@@ -121,8 +114,8 @@ class PrinterThread (Thread):
 
 def main():
     
-    blueThread = PrinterThread(0, 1, 1, 0)
-    redThread = PrinterThread(1, 2, 1, 5)
+    blueThread = PrinterThread(0, 2, 1, 0)
+    redThread = PrinterThread(3, 5, 1, 100)
     
     blueThread.start()
     redThread.start()
