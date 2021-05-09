@@ -114,10 +114,10 @@ class SafeGuardsThread (Thread):
 
 def main():
     
-    # process 1 and 2
+    # process 1s and 2
     firstThread = SafeGuardsThread(0, 2, 1, 0)
     # process 3 and 4
-    secondThread = SafeGuardsThread(2, 4, 1, 20)
+    secondThread = SafeGuardsThread(2, 3, 1, 20)
     
     firstThread.start()
     secondThread.start()
